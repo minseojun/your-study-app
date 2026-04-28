@@ -42,7 +42,8 @@
         </div>
         <button id="weeklyReportClose">✕</button>
       </div>
-      <div class="modal-body" id="weeklyReportBody"></div>
+      <div class="modal-body" id="weeklyReportBody">
+        </div>
     </div>
   </div>
 
@@ -132,8 +133,10 @@
   </header>
 
   <main id="appMain">
+
     <div id="tab-today" class="tab-panel active">
       <div class="tab-inner">
+
         <section class="card">
           <div class="card-header">
             <h2 class="card-title">오늘의 공부</h2>
@@ -184,6 +187,7 @@
           <ul id="tomorrowList"></ul>
           <div id="tomorrowEmpty" class="empty-state small"><span>🌙</span><p>미룬 항목이 없어요</p></div>
         </section>
+
       </div>
     </div>
 
@@ -194,6 +198,7 @@
             <h2 class="card-title">집중 타이머</h2>
             <button id="resetBtn" class="btn-text">초기화</button>
           </div>
+
           <div class="goal-section">
             <div class="goal-header">
               <span class="goal-title">오늘 목표</span>
@@ -208,16 +213,19 @@
               </div>
             </div>
           </div>
+
           <div id="swDisplay" class="sw-display">
             <span id="swHours">00</span><span class="sep">:</span>
             <span id="swMinutes">00</span><span class="sep">:</span>
             <span id="swSeconds">00</span><span id="swMs" class="sw-ms">.00</span>
           </div>
           <p class="sw-label">오늘 누적 <strong id="swAccum">0분</strong></p>
+
           <div class="sw-btns">
             <button id="startStopBtn" class="btn-primary">시작</button>
             <button id="lapBtn" class="btn-secondary" disabled>랩</button>
           </div>
+
           <div class="notif-row">
             <span class="notif-label">⏰ 공부 알림</span>
             <label class="toggle-switch"><input type="checkbox" id="notifToggle"/><span class="toggle-track"></span></label>
@@ -228,6 +236,7 @@
               <option value="90">90분</option>
             </select>
           </div>
+
           <p id="fsHint" class="fs-hint">▶ 시작 시 전체화면으로 전환돼요</p>
           <div id="lapsHeader" class="laps-header"><span>랩</span><span>시간</span></div>
           <ul id="lapsList" class="laps-list"></ul>
@@ -237,6 +246,7 @@
 
     <div id="tab-stats" class="tab-panel">
       <div class="tab-inner">
+
         <section class="card">
           <div class="card-header">
             <h2 class="card-title">📈 주간 공부 시간</h2>
@@ -267,15 +277,6 @@
           <div id="bestHour" class="best-hour"></div>
         </section>
 
-        <section class="card">
-          <div class="card-header">
-            <h2 class="card-title">💤 주간 수면 패턴</h2>
-            <span id="avgSleepLabel" class="badge muted">평균 —시간</span>
-          </div>
-          <p class="heatmap-hint">최근 7일간의 수면 기록이에요</p>
-          <canvas id="sleepChart" height="110"></canvas>
-        </section>
-
         <section class="card card-report-cta">
           <div class="report-cta-inner">
             <div>
@@ -285,6 +286,7 @@
             <button id="weeklyReportBtn" class="btn-primary" style="width:auto;padding:0 20px;height:40px;font-size:.85rem">보기</button>
           </div>
         </section>
+
       </div>
     </div>
 
@@ -298,6 +300,7 @@
               <p class="coach-inline-sub">Claude · 7일 누적 데이터 분석</p>
             </div>
           </div>
+
           <div id="inlineCoachState" class="coach-state" style="display:none"><div class="coach-spinner"></div><p>데이터 분석 중…</p></div>
           <div id="inlineCoachError" class="coach-inline-error" style="display:none">
             <span>⚠️</span><p id="inlineCoachErrorMsg"></p>
@@ -310,10 +313,12 @@
             <div id="inlineCoachSections"></div>
             <div class="coach-mission"><p class="coach-mission-title">🎯 내일의 미션</p><p id="inlineMissionText"></p></div>
           </div>
+
           <button id="coachRunBtn" class="btn-primary" style="margin-top:4px">🤖 지금 분석하기</button>
         </section>
       </div>
     </div>
+
   </main>
 
   <nav id="bottomNav">
@@ -336,5 +341,6 @@
   </nav>
 
   <script src="script.js"></script>
+  <script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script>
 </body>
 </html>
