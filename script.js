@@ -8,14 +8,14 @@
    ============================================================ */
 'use strict';
 
-/* ── Gemini API ─────────────────────────────────────────── */
+/* ── API 설정 (서버리스 전환으로 인해 클라이언트 키 삭제) ── */
 // const GEMINI_API_KEY = '???';
-// const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+// const GEMINI_API_URL = '...'; // 이 변수가 삭제되어 발생하던 에러를 아래 함수들로 해결합니다.
 
-/* ── 수정된 callGemini 함수 ── */
-async function callGemini(prompt) {
-  // 구글이 아닌 우리 서버의 /api/gemini 경로로 요청을 보냅니다.
-  const res = await fetch('/api/gemini', {
+/* ── 수정된 AI 호출 함수 (Claude 서버리스 대응) ── */
+async function callCoach(prompt) {
+  // 브라우저가 직접 AI에 묻지 않고, 우리가 만든 Vercel 서버(/api/coach)에 물어봅니다.
+  const res = await fetch('/api/coach', { 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt })
@@ -23,11 +23,17 @@ async function callGemini(prompt) {
 
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
-    throw new Error(e?.error || `HTTP ${res.status}`);
+    throw new Error(e?.error || 'AI 코치와 연결할 수 없습니다.');
   }
 
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  // 서버리스 함수(api/coach.js)에서 보내주는 text 필드를 반환합니다.
+  return data.text || '';
+}
+
+// 기존 에러 방지를 위한 헬퍼 (callGemini 이름을 쓰던 곳을 위해 유지)
+async function callGemini(prompt) {
+  return await callCoach(prompt);
 }
 
 /* ── 상수 ───────────────────────────────────────────────── */
@@ -661,12 +667,7 @@ JSON만 반환(마크다운 없이):
 조언은 7일 트렌드 반영, 따뜻하고 구체적으로.`;
 }
 
-async function callGemini(prompt){
-  const res=await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.8,maxOutputTokens:1024}})});
-  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||`HTTP ${res.status}`);}
-  return(await res.json()).candidates?.[0]?.content?.parts?.[0]?.text||'';
-}
-
+// Claude 서버리스 함수 호출로 통합 (기존 callGemini 에러 해결)
 function renderCoachInline(parsed){
   const score=Math.max(0,Math.min(100,Number(parsed.score)||50));
   document.getElementById('inlineScoreNum').textContent=`${score}점`;
@@ -694,14 +695,21 @@ async function runCoachAnalysis(){
   document.getElementById('inlineCoachError').style.display='none';
   document.getElementById('inlineCoachResult').style.display='none';
   try{
-    const raw=await callGemini(buildPrompt(collectData()));
-    const cleaned=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-    let parsed;try{parsed=JSON.parse(cleaned);}catch{parsed={score:70,sections:[{icon:'📝',title:'AI 코치 조언',body:raw.slice(0,400)}],mission:'내일도 화이팅!'};}
+    // callCoach를 통해 Claude 호출 (GEMINI_API_URL 변수를 찾지 않음)
+    const raw = await callCoach(buildPrompt(collectData()));
+    const cleaned = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      // JSON 파싱 실패 시 텍스트만이라도 보여줌
+      parsed = {score:70, sections:[{icon:'📝', title:'Claude 조언', body:raw.slice(0,400)}], mission:'내일도 화이팅!'};
+    }
     renderCoachInline(parsed);
-  }catch(err){
+  } catch(err) {
     document.getElementById('inlineCoachState').style.display='none';
     document.getElementById('inlineCoachError').style.display='flex';
-    document.getElementById('inlineCoachErrorMsg').textContent=err.message.includes('API_KEY_INVALID')?'API 키를 확인해주세요.':err.message.includes('QUOTA')?'API 할당량 초과. 잠시 후 다시 시도해주세요.':`오류: ${err.message}`;
+    document.getElementById('inlineCoachErrorMsg').textContent = `오류: ${err.message}`;
     document.getElementById('coachRunBtn').style.display='block';
   }
 }
