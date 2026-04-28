@@ -9,8 +9,26 @@
 'use strict';
 
 /* ── Gemini API ─────────────────────────────────────────── */
-const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+// const GEMINI_API_KEY = '???';
+// const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+/* ── 수정된 callGemini 함수 ── */
+async function callGemini(prompt) {
+  // 구글이 아닌 우리 서버의 /api/gemini 경로로 요청을 보냅니다.
+  const res = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt })
+  });
+
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e?.error || `HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
 
 /* ── 상수 ───────────────────────────────────────────────── */
 const SUNEUNG = new Date('2026-11-19T00:00:00');
