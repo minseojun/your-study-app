@@ -20,7 +20,6 @@
 
   <div id="sepiaDim"></div>
 
-  <!-- ── 집중 오버레이 ──────────────────────────────────── -->
   <div id="focusOverlay">
     <div class="overlay-inner">
       <div class="overlay-icon">🚨</div>
@@ -31,11 +30,9 @@
     </div>
   </div>
 
-  <!-- ── 토스트들 ────────────────────────────────────────── -->
   <div id="focusToast"><span>⚠️</span><span>집중력이 흐트러졌어요!</span><button id="focusToastClose">✕</button></div>
   <div id="notifToast"><span id="notifIcon">🔔</span><span id="notifMsg"></span><button id="notifClose">✕</button></div>
 
-  <!-- ── 주간 리포트 모달 ───────────────────────────────── -->
   <div id="weeklyReportBackdrop">
     <div id="weeklyReportModal" role="dialog" aria-modal="true">
       <div class="modal-header">
@@ -46,12 +43,10 @@
         <button id="weeklyReportClose">✕</button>
       </div>
       <div class="modal-body" id="weeklyReportBody">
-        <!-- JS로 채워짐 -->
-      </div>
+        </div>
     </div>
   </div>
 
-  <!-- ── 공부 리포트 모달 ───────────────────────────────── -->
   <div id="modalBackdrop">
     <div id="modal" role="dialog" aria-modal="true">
       <div class="modal-header">
@@ -85,26 +80,25 @@
     </div>
   </div>
 
-  <!-- ── AI 코치 모달 ───────────────────────────────────── -->
   <div id="coachBackdrop">
     <div id="coachModal" role="dialog" aria-modal="true">
       <div class="coach-header">
         <div class="coach-header-left">
           <div class="coach-avatar">🤖</div>
           <div class="coach-header-text">
-            <h2>AI 학습 코치</h2>
-            <p>Claude · 7일 데이터 분석</p>
+            <h2>AI 학습 전략가</h2>
+            <p>Claude · 취약 과목 & 수면 분석</p>
           </div>
         </div>
         <button class="coach-close-btn" id="coachClose">✕</button>
       </div>
       <div class="coach-body">
-        <div class="coach-state" id="coachLoading"><div class="coach-spinner"></div><p>7일치 학습 데이터를 분석하는 중…</p></div>
+        <div class="coach-state" id="coachLoading"><div class="coach-spinner"></div><p>데이터를 심층 분석하는 중…</p></div>
         <div class="coach-state" id="coachError" style="display:none"><span style="font-size:2rem">⚠️</span><p id="coachErrorMsg" style="color:var(--danger);font-size:.85rem;text-align:center;line-height:1.6;max-width:280px"></p></div>
         <div id="coachResult" style="display:none">
           <div class="coach-score-row">
-            <div class="coach-score-card"><div class="coach-score-num" id="scoreNum">—</div><div class="coach-score-label">오늘 집중 점수</div></div>
-            <div class="coach-score-card"><div class="coach-score-num dday" id="coachDday">—</div><div class="coach-score-label">수능까지</div></div>
+            <div class="coach-score-card"><div class="coach-score-num" id="scoreNum">—</div><div class="coach-score-label">집중 종합 점수</div></div>
+            <div class="coach-score-card"><div class="coach-score-num dday" id="coachDday">—</div><div class="coach-score-label">수능 D-Day</div></div>
           </div>
           <div id="coachSections"></div>
           <div class="coach-mission"><p class="coach-mission-title">🎯 내일의 미션</p><p id="coachMissionText"></p></div>
@@ -113,16 +107,13 @@
       <div class="coach-footer">
         <button id="coachRefresh" class="btn-coach-refresh">
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M12 7A5 5 0 1 1 7 2a5 5 0 0 1 3.5 1.5L12 2v4H8l1.5-1.5A3 3 0 1 0 10 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          다시 분석하기
+          분석 업데이트
         </button>
-        <p class="coach-powered">Powered by Claude </p>
+        <p class="coach-powered">Powered by Claude</p>
       </div>
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════
-       헤더
-  ══════════════════════════════════════════════════════ -->
   <header id="appHeader">
     <div class="header-inner">
       <div class="brand">
@@ -131,7 +122,6 @@
         <span id="ddayBadge" class="dday-badge"></span>
       </div>
       <div class="header-right">
-        <!-- 집중 점수 위젯 -->
         <div class="score-widget" id="scoreWidget" title="오늘 집중 점수">
           <span class="score-widget-num" id="liveScore">—</span>
           <span class="score-widget-label">점</span>
@@ -142,16 +132,11 @@
     </div>
   </header>
 
-  <!-- ══════════════════════════════════════════════════════
-       탭 콘텐츠 영역
-  ══════════════════════════════════════════════════════ -->
   <main id="appMain">
 
-    <!-- ── TAB 1: 오늘 ──────────────────────────────────── -->
     <div id="tab-today" class="tab-panel active">
       <div class="tab-inner">
 
-        <!-- 오늘 할 일 -->
         <section class="card">
           <div class="card-header">
             <h2 class="card-title">오늘의 공부</h2>
@@ -183,7 +168,18 @@
           </div>
         </section>
 
-        <!-- 내일로 미룬 것들 -->
+        <section class="card sleep-card">
+          <div class="card-header">
+            <h2 class="card-title">💤 수면 관리</h2>
+            <span id="sleepStatus" class="badge muted">활동 중</span>
+          </div>
+          <div class="sleep-btns">
+            <button id="btnSleepNow" class="btn-sleep">🌙 잘 자요</button>
+            <button id="btnWakeUp" class="btn-sleep wake" disabled>☀️ 일어났어요</button>
+          </div>
+          <p id="sleepLastMsg" class="sleep-hint">충분한 수면은 기억력 향상에 필수예요!</p>
+        </section>
+
         <section class="card card-tomorrow">
           <div class="card-header">
             <h2 class="card-title muted">내일로 미룬 것들</h2>
@@ -196,7 +192,6 @@
       </div>
     </div>
 
-    <!-- ── TAB 2: 타이머 ────────────────────────────────── -->
     <div id="tab-timer" class="tab-panel">
       <div class="tab-inner">
         <section class="card timer-card">
@@ -205,7 +200,6 @@
             <button id="resetBtn" class="btn-text">초기화</button>
           </div>
 
-          <!-- 오늘 목표 진행 -->
           <div class="goal-section">
             <div class="goal-header">
               <span class="goal-title">오늘 목표</span>
@@ -221,7 +215,6 @@
             </div>
           </div>
 
-          <!-- 타이머 디스플레이 -->
           <div id="swDisplay" class="sw-display">
             <span id="swHours">00</span><span class="sep">:</span>
             <span id="swMinutes">00</span><span class="sep">:</span>
@@ -234,7 +227,6 @@
             <button id="lapBtn" class="btn-secondary" disabled>랩</button>
           </div>
 
-          <!-- 알림 설정 -->
           <div class="notif-row">
             <span class="notif-label">⏰ 공부 알림</span>
             <label class="toggle-switch"><input type="checkbox" id="notifToggle"/><span class="toggle-track"></span></label>
@@ -253,11 +245,9 @@
       </div>
     </div>
 
-    <!-- ── TAB 3: 분석 ──────────────────────────────────── -->
     <div id="tab-stats" class="tab-panel">
       <div class="tab-inner">
 
-        <!-- 주간 바 차트 -->
         <section class="card">
           <div class="card-header">
             <h2 class="card-title">📈 주간 공부 시간</h2>
@@ -267,7 +257,6 @@
           <div id="weeklySubjects" class="weekly-subjects"></div>
         </section>
 
-        <!-- 시간대별 히트맵 -->
         <section class="card">
           <div class="card-header">
             <h2 class="card-title">🕐 시간대별 집중 히트맵</h2>
@@ -289,7 +278,6 @@
           <div id="bestHour" class="best-hour"></div>
         </section>
 
-        <!-- 주간 리포트 버튼 -->
         <section class="card card-report-cta">
           <div class="report-cta-inner">
             <div>
@@ -303,7 +291,6 @@
       </div>
     </div>
 
-    <!-- ── TAB 4: 코치 ──────────────────────────────────── -->
     <div id="tab-coach" class="tab-panel">
       <div class="tab-inner">
         <section class="card coach-inline-card">
@@ -315,8 +302,7 @@
             </div>
           </div>
 
-          <!-- 인라인 결과 영역 -->
-          <div id="inlineCoachState" class="coach-state" style="display:none"><div class="coach-spinner"></div><p>분석 중…</p></div>
+          <div id="inlineCoachState" class="coach-state" style="display:none"><div class="coach-spinner"></div><p>데이터 분석 중…</p></div>
           <div id="inlineCoachError" class="coach-inline-error" style="display:none">
             <span>⚠️</span><p id="inlineCoachErrorMsg"></p>
           </div>
@@ -336,9 +322,6 @@
 
   </main>
 
-  <!-- ══════════════════════════════════════════════════════
-       바텀 탭 네비게이션
-  ══════════════════════════════════════════════════════ -->
   <nav id="bottomNav">
     <button class="nav-item active" data-tab="today">
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/><rect x="12" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/><rect x="12" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/></svg>
