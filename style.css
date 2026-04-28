@@ -444,3 +444,51 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
   *{-webkit-tap-highlight-color:transparent}
   button:active{opacity:.8}
 }
+
+/* ── 수면 관리 스타일 (크기 확대) ── */
+.sleep-btns { 
+  display: flex; 
+  gap: 12px; 
+  margin-top: 8px; 
+}
+.btn-sleep { 
+  flex: 1; 
+  height: 60px; /* 더 높게 수정 */
+  border-radius: var(--r-md); 
+  border: 2px solid var(--border); /* 선 더 굵게 */
+  background: var(--bg); 
+  color: var(--text-1); 
+  font-family: var(--font); 
+  font-size: 1.1rem; /* 글자 크기 확대 */
+  font-weight: 700; /* 글자 두껍게 */
+  cursor: pointer; 
+  transition: all var(--tr); 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.btn-sleep:hover:not(:disabled) { 
+  border-color: var(--accent); 
+  background: var(--accent-s);
+  transform: translateY(-2px);
+}
+.btn-sleep.wake:not(:disabled) { 
+  background: #fff8ee; 
+  border-color: var(--warn); 
+  color: var(--warn); 
+}
+.btn-sleep.wake:not(:disabled):hover {
+  background: var(--warn-s);
+}
+.btn-sleep:disabled { 
+  opacity: 0.3; 
+  cursor: not-allowed; 
+  filter: grayscale(1);
+}
+.sleep-hint { 
+  font-size: .8rem; 
+  color: var(--text-3); 
+  text-align: center; 
+  margin-top: 10px; 
+}
