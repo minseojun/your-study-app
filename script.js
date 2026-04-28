@@ -521,7 +521,10 @@ async function runCoachAnalysis(){
   try {
     const raw = await callCoach(buildPrompt(collectData()));
     const cleaned = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-    renderCoachInline(JSON.parse(cleaned));
+    let parsed;
+    try { parsed = JSON.parse(cleaned); }
+    catch { throw new Error('응답이 잘렸습니다. 잠시 후 다시 시도해주세요.'); }
+    renderCoachInline(parsed);
   } catch(err) {
     document.getElementById('inlineCoachState').style.display='none'; document.getElementById('inlineCoachError').style.display='flex';
     document.getElementById('inlineCoachErrorMsg').textContent=`오류: ${err.message}`; document.getElementById('coachRunBtn').style.display='block';
