@@ -69,7 +69,7 @@ body.night #sepiaDim{opacity:1}
 .modal-backdrop-base{position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(29,29,31,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);visibility:hidden;pointer-events:none;opacity:0;transition:opacity .22s,visibility .22s}
 .modal-backdrop-base.show{visibility:visible;pointer-events:auto;opacity:1}
 
-#modalBackdrop,#weeklyReportBackdrop,#coachBackdrop{position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(29,29,31,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);visibility:hidden;pointer-events:none;opacity:0;transition:opacity .22s,visibility .22s}
+#modalBackdrop,#weeklyReportBackdrop,#coachBackdrop{position:fixed;inset:0;z-index:9001;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(29,29,31,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);visibility:hidden;pointer-events:none;opacity:0;transition:opacity .22s,visibility .22s}
 #modalBackdrop.show,#weeklyReportBackdrop.show,#coachBackdrop.show{visibility:visible;pointer-events:auto;opacity:1}
 
 #modal,#weeklyReportModal{background:var(--card);border-radius:var(--r-lg);width:100%;max-width:520px;max-height:88vh;overflow-y:auto;box-shadow:var(--sh-lg);transform:scale(.95) translateY(12px);transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
