@@ -1,6 +1,5 @@
 /* ============================================================
-   StudyFlow v8 — script.js
-   기본 기능 유지 + 수면 관리 + 취약 과목 탐지 전략가 모드
+   StudyFlow v8 — script.js (Updated with Weekly Report & Sleep Chart)
    ============================================================ */
 'use strict';
 
@@ -39,7 +38,7 @@ const K = {
   GOALS       :'sf_goals',
   NIGHT       :'sf_night',
   LAST_REPORT :'sf_last_report',
-  SLEEP_LOGS  :'sf_sleep_logs', // 수면 기록 데이터
+  SLEEP_LOGS  :'sf_sleep_logs',
 };
 
 /* ── 유틸리티 ── */
@@ -65,9 +64,7 @@ function calcLiveScore(tMs, sess, dist, doneT, totalT, st) {
   return Math.max(0, Math.min(100, score));
 }
 
-/* ══════════════════════════════════════════════════════════
-   날짜 및 초기화
-   ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════ */
 function checkDateRollover() {
   const last=lsGet(K.TODAY_DATE), now=todayStr();
   if(last===now) return;
@@ -91,7 +88,6 @@ function checkDateRollover() {
   lsSet(K.TODAY_DATE,now);
 }
 checkDateRollover();
-
 document.getElementById('dateBadge').textContent = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
 const DDAY=getDday();
 document.getElementById('dDayCount').textContent=DDAY;
@@ -108,7 +104,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
     document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     activeTab = tab;
-    if(tab==='stats') { renderWeeklyStats(); renderHeatmap(); }
+    if(tab==='stats') { renderWeeklyStats(); renderHeatmap(); renderSleepChart(); }
   });
 });
 
@@ -124,14 +120,12 @@ function setNight(on){
 (()=>{const s=lsGet(K.NIGHT);if(s==='on')setNight(true);else if(s==='off')setNight(false);else setNight(new Date().getHours()>=22);})();
 nightToggle.addEventListener('click',()=>{const on=!document.body.classList.contains('night');setNight(on);lsSet(K.NIGHT,on?'on':'off');});
 
-/* ══════════════════════════════════════════════════════════
-   할 일 및 목표 관리
-   ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════ */
 let todayTasks=lsGet(K.TODAY_TASKS)||[];
 let tomorrowTasks=lsGet(K.TMRW_TASKS)||[];
 let selectedCat='국어';
 
-const S_POST=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v6.5L10 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 10.5c.8 1.5 2.4 2.5 4.2 2.5 2.8 0 5-2.2 5-5S8 3 5.2 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+const S_POST=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v6.5L10 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 1L4 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const S_DEL=`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 1.5l10 10M11.5 1.5l-10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
 const S_BACK=`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11 6.5H2M6.5 2L2 6.5l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -199,23 +193,21 @@ function renderGoalBars(){
     const goal=goals[sub]||0; if(!goal) return;
     const actual=Math.round((subjectTime[sub]||0)/60000);
     const pct=Math.min(100,goal>0?Math.round(actual/goal*100):0);
-    bars.innerHTML+=`<div class="goal-bar-row"><span class="goal-bar-label">${sub}</span><div class="goal-bar-track"><div class="goal-bar-fill" style="width:${pct}%;background:${SUBJECT_COLORS[sub]}"></div></div><span class="goal-bar-stat">${actual}/${goal}분</span></div>`;
+    bars.innerHTML+=`<div class="goal-bar-row"><span class="goal-bar-label">${sub}</span><div class="goal-bar-track"><div class="goal-bar-fill" style="width:${pct}%;background:${SUBJECT_COLORS[sub]}"></div></div></div>`;
   });
 }
 document.getElementById('goalEditBtn').addEventListener('click',()=>{
   const p=document.getElementById('goalEditPanel'), inp=document.getElementById('goalInputs');
   if(p.style.display==='block'){ p.style.display='none'; return; }
   inp.innerHTML=''; SUBJECTS.forEach(sub=>{
-    inp.innerHTML+=`<div class="goal-input-row"><span class="goal-input-label"><span class="cat-dot cat-${sub}"></span>${sub}</span><input type="number" class="goal-input-field" data-sub="${sub}" value="${goals[sub]||0}" min="0" max="480" step="15"/><span class="goal-input-unit">분</span></div>`;
+    inp.innerHTML+=`<div class="goal-input-row"><span class="goal-input-label"><span class="cat-dot cat-${sub}"></span>${sub}</span><input type="number" class="goal-input-field" data-sub="${sub}" value="${goals[sub]||0}" min="0"></div>`;
   });
   p.style.display='block';
 });
-document.getElementById('goalSave').addEventListener('click',()=>{ document.querySelectorAll('.goal-input-field').forEach(i=>{goals[i.dataset.sub]=parseInt(i.value)||0;}); lsSet(K.GOALS,goals); document.getElementById('goalEditPanel').style.display='none'; renderGoalBars(); showNotif('목표가 저장됐어요 ✅'); });
+document.getElementById('goalSave').addEventListener('click',()=>{ document.querySelectorAll('.goal-input-field').forEach(i=>{goals[i.dataset.sub]=parseInt(i.value)||0;}); lsSet(K.GOALS,goals); document.getElementById('goalEditPanel').style.display='none'; renderGoalBars(); });
 document.getElementById('goalCancel').addEventListener('click',()=>{ document.getElementById('goalEditPanel').style.display='none'; });
 
-/* ══════════════════════════════════════════════════════════
-   타이머 엔진
-   ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════ */
 let timerState=lsGet(K.TIMER_STATE)||{elapsed:0,subjectTime:{},sessions:[],distractions:0,totalMs:0};
 let elapsed=timerState.elapsed||0, sessions=timerState.sessions||[], distractions=timerState.distractions||0, totalMs=timerState.totalMs||0, subjectTime=timerState.subjectTime||{};
 let ticker=null, startTime=null, running=false, sessionStart=null, laps=[], lastLap=0, isFS=false;
@@ -267,9 +259,7 @@ function resetTimer(){
 document.getElementById('startStopBtn').addEventListener('click',()=>running?stopTimer():startTimer());
 document.getElementById('resetBtn').addEventListener('click',resetTimer);
 
-/* ══════════════════════════════════════════════════════════
-   [신규] 수면 관리 기능
-   ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════ */
 let sleepStartTime = lsGet('sf_temp_sleep'); 
 function updateSleepUI() {
   const status = document.getElementById('sleepStatus'), btnSleep = document.getElementById('btnSleepNow'), btnWake = document.getElementById('btnWakeUp');
@@ -294,15 +284,13 @@ document.getElementById('btnWakeUp').addEventListener('click', () => {
   updateSleepUI(); showNotif('상쾌한 아침이에요! 오늘도 화이팅 ☀️', '✨');
 });
 
-/* ══════════════════════════════════════════════════════════
-   알림 및 집중 오버레이
-   ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════ */
 let notifTimer=null;
 function showNotif(msg,icon='🔔'){
   const t=document.getElementById('notifToast'); document.getElementById('notifMsg').textContent=msg;
   document.getElementById('notifIcon').textContent=icon; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),5000);
 }
-function startNotifTimer(){ const mins=parseInt(document.getElementById('notifInterval').value); if(document.getElementById('notifToggle').checked) notifTimer=setInterval(()=>new Notification('StudyFlow ⏰', {body:`${mins}분 공부 완료! 5분 쉬어가세요.`}), mins*60000); }
+function startNotifTimer(){ const mins=parseInt(document.getElementById('notifInterval').value); if(document.getElementById('notifToggle').checked) notifTimer=setInterval(()=>new Notification('StudyFlow 알림',{body:'공부하고 있으신가요?'}),mins*60000); }
 function stopNotifTimer(){ clearInterval(notifTimer); }
 
 const focusOverlay=document.getElementById('focusOverlay');
@@ -310,20 +298,21 @@ function showOverlay(){ if(running) { distractions++; saveTimerState(); focusOve
 document.getElementById('overlayBackBtn').addEventListener('click',()=>focusOverlay.classList.remove('show'));
 document.addEventListener('visibilitychange',()=>{ if(document.hidden && running) showOverlay(); });
 
-/* ══════════════════════════════════════════════════════════
-   통계 및 히트맵
-   ══════════════════════════════════════════════════════════ */
-let weeklyChartInst=null;
+/* ══════════════════════════════════════════════════════════ */
+let weeklyChartInst=null, sleepChartInst=null;
+
 function getHistoryWithToday(){
   return [...(lsGet(K.HISTORY)||[]), {date:todayStr(), totalMs, subjectTime, distractions, sessions, doneTasks:todayTasks.filter(t=>t.done).length, totalTasks:todayTasks.length}].slice(-7);
 }
+
 function renderWeeklyStats(){
   const all=getHistoryWithToday(), weekTotal=all.reduce((s,d)=>s+d.totalMs,0);
   document.getElementById('weeklyTotal').textContent=msToReadable(weekTotal);
   const labels=all.map(d=>d.date.slice(-5)), mins=all.map(d=>Math.round(d.totalMs/60000));
   if(weeklyChartInst) weeklyChartInst.destroy();
-  weeklyChartInst=new Chart(document.getElementById('weeklyChart'),{type:'bar',data:{labels,datasets:[{data:mins,backgroundColor:'#0071e3',borderRadius:6}]},options:{plugins:{legend:{display:false}}}});
+  weeklyChartInst=new Chart(document.getElementById('weeklyChart'),{type:'bar',data:{labels,datasets:[{data:mins,backgroundColor:'#0071e3',borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
 }
+
 function renderHeatmap(){
   const map=new Array(24).fill(0); getHistoryWithToday().forEach(day=>(day.sessions||[]).forEach(s=>map[s.startHour]+=s.ms));
   const grid=document.getElementById('heatmapGrid'), maxVal=Math.max(...map,1); grid.innerHTML='';
@@ -332,11 +321,124 @@ function renderHeatmap(){
     const lvl=ms===0?0:ms<maxVal*.25?1:ms<maxVal*.5?2:ms<maxVal*.75?3:4;
     cell.setAttribute('data-lvl',lvl); cell.title=`${h}시: ${msToReadable(ms)}`; grid.appendChild(cell);
   });
+  const bestHour = map.indexOf(Math.max(...map));
+  document.getElementById('bestHour').innerHTML = `💡 <strong>${bestHour}시</strong>에 가장 집중이 잘 됐어요!`;
 }
 
-/* ══════════════════════════════════════════════════════════
-   AI 코치 (취약 과목 탐지 전략 포함)
-   ══════════════════════════════════════════════════════════ */
+function renderSleepChart(){
+  const sleepLogs = lsGet(K.SLEEP_LOGS) || [];
+  const labels = sleepLogs.map(l => l.date.slice(-5));
+  const data = sleepLogs.map(l => Math.round(l.durationMin / 60 * 10) / 10);
+  
+  const container = document.getElementById('heatmapGrid').parentElement;
+  let chartContainer = container.querySelector('#sleepChartContainer');
+  if(!chartContainer) {
+    chartContainer = document.createElement('div');
+    chartContainer.id = 'sleepChartContainer';
+    chartContainer.style.marginTop = '20px';
+    container.appendChild(chartContainer);
+  }
+  
+  if (sleepChartInst) sleepChartInst.destroy();
+  
+  const canvas = document.createElement('canvas');
+  chartContainer.innerHTML = '';
+  chartContainer.appendChild(canvas);
+  
+  sleepChartInst = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels.length ? labels : ['데이터 없음'],
+      datasets: [{
+        label: '수면 시간',
+        data: data.length ? data : [0],
+        borderColor: '#cc5de8',
+        backgroundColor: 'rgba(204,93,232,.1)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: '#cc5de8',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { 
+        legend: { display: true, labels: { font: { size: 12 }, color: 'var(--text-2)' } } 
+      },
+      scales: { 
+        y: { 
+          beginAtZero: true, 
+          max: 12, 
+          ticks: { callback: v => v + '시간' } 
+        } 
+      }
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════ */
+function renderWeeklyReportContent() {
+  const all = getHistoryWithToday();
+  const sleepLogs = lsGet(K.SLEEP_LOGS) || [];
+  const weekTotal = all.reduce((s,d)=>s+d.totalMs, 0);
+  const avgSleep = sleepLogs.length ? Math.round(sleepLogs.reduce((s,l)=>s+l.durationMin,0)/sleepLogs.length) : 0;
+  
+  let html = `
+    <div class="weekly-report-section">
+      <h3>📊 주간 통계</h3>
+      <div class="wr-stat-row">
+        <div class="wr-stat"><div class="wr-stat-val">${msToReadable(weekTotal)}</div><div class="wr-stat-lbl">총 공부시간</div></div>
+        <div class="wr-stat"><div class="wr-stat-val">${all.length}</div><div class="wr-stat-lbl">활동일수</div></div>
+        <div class="wr-stat"><div class="wr-stat-val">${avgSleep}분</div><div class="wr-stat-lbl">평균수면</div></div>
+      </div>
+    </div>
+    
+    <div class="weekly-report-section">
+      <h3>📚 과목별 학습시간</h3>
+      <div class="wr-subject-bars">
+  `;
+  
+  const weekSubMs = {};
+  all.forEach(d => Object.entries(d.subjectTime||{}).forEach(([k,v]) => weekSubMs[k] = (weekSubMs[k]||0) + v));
+  
+  SUBJECTS.forEach(sub => {
+    const min = Math.round((weekSubMs[sub]||0)/60000);
+    const goalMin = goals[sub] || 0;
+    const pct = goalMin > 0 ? Math.round(min/goalMin*100) : 0;
+    html += `
+      <div class="wr-sub-row">
+        <span class="wr-sub-name">${sub}</span>
+        <div class="wr-sub-track"><div class="wr-sub-fill" style="width:${Math.min(100,pct)}%;background:${SUBJECT_COLORS[sub]}"></div></div>
+        <span class="wr-sub-time">${min}분</span>
+      </div>
+    `;
+  });
+  
+  html += `</div></div>`;
+  
+  const avgScore = all.length > 0 ? Math.round(all.reduce((s,d)=>s+(calcLiveScore(d.totalMs,d.sessions,d.distractions,d.doneTasks,d.totalTasks,d.subjectTime)||0),0)/all.length) : 0;
+  html += `<div class="wr-insight">주간 평균 집중점수: <strong>${avgScore}점</strong></div>`;
+  
+  document.getElementById('weeklyReportBody').innerHTML = html;
+}
+
+document.getElementById('weeklyReportBtn').addEventListener('click', () => {
+  document.getElementById('weeklyReportBackdrop').classList.add('show');
+  renderWeeklyReportContent();
+});
+document.getElementById('weeklyReportClose').addEventListener('click', () => {
+  document.getElementById('weeklyReportBackdrop').classList.remove('show');
+});
+document.getElementById('weeklyReportBackdrop').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('weeklyReportBackdrop')) {
+    document.getElementById('weeklyReportBackdrop').classList.remove('show');
+  }
+});
+
+/* ══════════════════════════════════════════════════════════ */
 function collectData(){
   const all=getHistoryWithToday(), sleepLogs=lsGet(K.SLEEP_LOGS)||[];
   const avgSleep = sleepLogs.length ? Math.round(sleepLogs.reduce((s,l)=>s+l.durationMin,0)/sleepLogs.length) : 0;
@@ -359,7 +461,7 @@ function buildPrompt(d){
 지침:
 1. '취약 과목 탐지': 주간 목표 대비 달성률이 가장 낮은 과목을 찾아 분석하고 대책을 줄 것.
 2. '수면 및 컨디션': 수면 데이터 기반으로 학습 효율 조언.
-3. JSON만 반환: {"score":숫자, "sections":[{"icon":"🔍","title":"취약 과목 탐지","body":"..."},{"icon":"💤","title":"수면 분석","body":"..."},{"icon":"🎯","title":"내일의 전략","body":"..."}], "mission":"..."}`;
+3. JSON만 반환: {"score":숫자, "sections":[{"icon":"🔍","title":"취약 과목 탐지","body":"..."},{"icon":"💤","title":"수면 분석","body":"..."},{"icon":"🎯","title":"내일의 미션","body":"..."}], "mission":"..."}`;
 }
 
 function renderCoachInline(parsed){
