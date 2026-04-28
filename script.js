@@ -501,7 +501,8 @@ function buildPrompt(d){
 지침:
 1. '취약 과목 탐지': 주간 목표 대비 달성률이 가장 낮은 과목을 찾아 분석하고 대책을 줄 것.
 2. '수면 및 컨디션': 수면 데이터 기반으로 학습 효율 조언.
-3. JSON만 반환: {"score":숫자, "sections":[{"icon":"🔍","title":"취약 과목 탐지","body":"..."},{"icon":"💤","title":"수면 분석","body":"..."},{"icon":"🎯","title":"내일의 미션","body":"..."}], "mission":"..."}`;
+3. 이모지 사용 금지. 모든 텍스트는 한글 또는 숫자만 사용할 것.
+4. JSON만 반환: {"score":숫자, "sections":[{"icon":"","title":"취약 과목 탐지","body":"..."},{"icon":"","title":"수면 분석","body":"..."},{"icon":"","title":"내일의 미션","body":"..."}], "mission":"..."}`;
 }
 
 function renderCoachInline(parsed){
