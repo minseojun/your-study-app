@@ -258,6 +258,9 @@ function resetTimer(){
 }
 document.getElementById('startStopBtn').addEventListener('click',()=>running?stopTimer():startTimer());
 document.getElementById('resetBtn').addEventListener('click',resetTimer);
+document.getElementById('modalClose').addEventListener('click',()=>document.getElementById('modalBackdrop').classList.remove('show'));
+document.getElementById('modalContinue').addEventListener('click',()=>document.getElementById('modalBackdrop').classList.remove('show'));
+document.getElementById('modalReset').addEventListener('click',()=>{ document.getElementById('modalBackdrop').classList.remove('show'); resetTimer(); });
 
 /* ══════════════════════════════════════════════════════════ */
 let sleepStartTime = lsGet('sf_temp_sleep'); 
@@ -299,7 +302,50 @@ document.getElementById('overlayBackBtn').addEventListener('click',()=>focusOver
 document.addEventListener('visibilitychange',()=>{ if(document.hidden && running) showOverlay(); });
 
 /* ══════════════════════════════════════════════════════════ */
-let weeklyChartInst=null, sleepChartInst=null;
+let weeklyChartInst=null, sleepChartInst=null, subjectChartInst=null;
+
+function showReport() {
+  document.getElementById('rTotalTime').textContent = msToReadable(totalMs) || '0초';
+  document.getElementById('rSessions').textContent = sessions.length + '회';
+  const longest = sessions.length ? Math.max(...sessions.map(s => s.ms)) : 0;
+  document.getElementById('rLongest').textContent = msToReadable(longest) || '0초';
+  document.getElementById('rDistractions').textContent = distractions + '회';
+
+  const subEntries = Object.entries(subjectTime).filter(([,v]) => v > 0);
+  const chartSection = document.getElementById('chartSection');
+  if (subEntries.length > 0) {
+    chartSection.style.display = 'flex';
+    if (subjectChartInst) subjectChartInst.destroy();
+    subjectChartInst = new Chart(document.getElementById('subjectChart'), {
+      type: 'doughnut',
+      data: {
+        labels: subEntries.map(([k]) => k),
+        datasets: [{ data: subEntries.map(([,v]) => Math.round(v/60000)), backgroundColor: subEntries.map(([k]) => SUBJECT_COLORS[k]), borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: { responsive: false, plugins: { legend: { display: false } }, cutout: '60%' }
+    });
+    const legend = document.getElementById('chartLegend');
+    legend.innerHTML = '';
+    const tot = subEntries.reduce((s,[,v]) => s+v, 0);
+    subEntries.forEach(([k,v]) => {
+      const pct = tot > 0 ? Math.round(v/tot*100) : 0;
+      legend.innerHTML += `<div class="legend-item"><span class="legend-dot" style="background:${SUBJECT_COLORS[k]}"></span><span>${k}</span><span class="legend-pct">${pct}%</span></div>`;
+    });
+  } else {
+    chartSection.style.display = 'none';
+  }
+
+  const timeline = document.getElementById('sessionTimeline');
+  timeline.innerHTML = '';
+  const maxMs = sessions.length ? Math.max(...sessions.map(s => s.ms)) : 1;
+  sessions.forEach((s, i) => {
+    const pct = Math.round(s.ms / maxMs * 100);
+    timeline.innerHTML += `<div class="bar-row"><span class="bar-lbl">#${i+1}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><span class="bar-time">${msToReadable(s.ms)}</span></div>`;
+  });
+
+  document.getElementById('aiFeedback').textContent = '';
+  document.getElementById('modalBackdrop').classList.add('show');
+}
 
 function getHistoryWithToday(){
   return [...(lsGet(K.HISTORY)||[]), {date:todayStr(), totalMs, subjectTime, distractions, sessions, doneTasks:todayTasks.filter(t=>t.done).length, totalTasks:todayTasks.length}].slice(-7);
@@ -327,53 +373,47 @@ function renderHeatmap(){
 
 function renderSleepChart(){
   const sleepLogs = lsGet(K.SLEEP_LOGS) || [];
+  const canvas = document.getElementById('sleepChart');
+  const noData = document.getElementById('sleepNoData');
+  if (!canvas) return;
+
+  if (sleepLogs.length === 0) {
+    canvas.style.display = 'none';
+    if (noData) noData.style.display = 'flex';
+    return;
+  }
+
+  canvas.style.display = 'block';
+  if (noData) noData.style.display = 'none';
+
   const labels = sleepLogs.map(l => l.date.slice(-5));
   const data = sleepLogs.map(l => Math.round(l.durationMin / 60 * 10) / 10);
-  
-  const container = document.getElementById('heatmapGrid').parentElement;
-  let chartContainer = container.querySelector('#sleepChartContainer');
-  if(!chartContainer) {
-    chartContainer = document.createElement('div');
-    chartContainer.id = 'sleepChartContainer';
-    chartContainer.style.marginTop = '20px';
-    container.appendChild(chartContainer);
-  }
-  
+
   if (sleepChartInst) sleepChartInst.destroy();
-  
-  const canvas = document.createElement('canvas');
-  chartContainer.innerHTML = '';
-  chartContainer.appendChild(canvas);
-  
+
   sleepChartInst = new Chart(canvas, {
-    type: 'line',
+    type: 'bar',
     data: {
-      labels: labels.length ? labels : ['데이터 없음'],
+      labels,
       datasets: [{
         label: '수면 시간',
-        data: data.length ? data : [0],
+        data,
+        backgroundColor: 'rgba(204,93,232,.2)',
         borderColor: '#cc5de8',
-        backgroundColor: 'rgba(204,93,232,.1)',
-        borderWidth: 2.5,
-        fill: true,
-        tension: 0.4,
-        pointRadius: 4,
-        pointBackgroundColor: '#cc5de8',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2
+        borderWidth: 2,
+        borderRadius: 6
       }]
     },
     options: {
       responsive: true,
-      plugins: { 
-        legend: { display: true, labels: { font: { size: 12 }, color: 'var(--text-2)' } } 
-      },
-      scales: { 
-        y: { 
-          beginAtZero: true, 
-          max: 12, 
-          ticks: { callback: v => v + '시간' } 
-        } 
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 12,
+          ticks: { callback: v => v + 'h', font: { size: 11 } }
+        },
+        x: { ticks: { font: { size: 11 } } }
       }
     }
   });
