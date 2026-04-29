@@ -235,6 +235,8 @@ function updateTimerUI(){
   document.querySelectorAll('#timerCategoryChips .chip').forEach(c=>{ c.disabled=inSession; });
 }
 
+/* script.js - startTimer 함수 수정 */
+
 function startTimer(){
   if(sessionElapsedAtStart===null){
     sessionElapsedAtStart=elapsed;
@@ -242,6 +244,15 @@ function startTimer(){
     lsSet('sf_session_start',sessionStart);
     lsSet('sf_session_elapsed_at_start',sessionElapsedAtStart);
   }
+
+  // --- 전체화면 전환 로직 추가 ---
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.warn(`전체화면 전환 실패: ${err.message}`);
+    });
+  }
+  // ----------------------------
+
   startTime=Date.now(); ticker=setInterval(tick,30); running=true;
   updateTimerUI(); startNotifTimer();
 }
