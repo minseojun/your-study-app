@@ -1,34 +1,48 @@
 /* ============================================================
-   StudyFlow v8 — script.js
+   StudyFlow v8 — script.js (Updated with Weekly Report & Sleep Chart)
    ============================================================ */
 'use strict';
 
+/* ── AI 코치 호출 (Claude 서버리스 대응) ── */
 async function callCoach(prompt) {
   const res = await fetch('/api/coach', { 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt })
   });
+
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
     throw new Error(e?.error || 'AI 코치와 연결할 수 없습니다.');
   }
+
   const data = await res.json();
   return data.text || '';
 }
 
-async function callGemini(prompt) { return await callCoach(prompt); }
+// 기존 callGemini 참조 유지
+async function callGemini(prompt) {
+  return await callCoach(prompt);
+}
 
+/* ── 상수 및 로컬스토리지 키 ── */
 const SUNEUNG = new Date('2026-11-19T00:00:00');
 const SUBJECTS = ['국어','영어','수학','사회문화','생활과윤리'];
 const SUBJECT_COLORS = {'국어':'#ff6b6b','영어':'#51cf66','수학':'#339af0','사회문화':'#ffa94d','생활과윤리':'#cc5de8'};
 const K = {
-  TODAY_TASKS :'sf_today_tasks', TMRW_TASKS:'sf_tmrw_tasks', TODAY_DATE:'sf_today_date',
-  TIMER_STATE :'sf_timer_state', HISTORY:'sf_history', GOALS:'sf_goals',
-  NIGHT:'sf_night', LAST_REPORT:'sf_last_report', SLEEP_LOGS:'sf_sleep_logs',
+  TODAY_TASKS :'sf_today_tasks',
+  TMRW_TASKS  :'sf_tmrw_tasks',
+  TODAY_DATE  :'sf_today_date',
+  TIMER_STATE :'sf_timer_state',
+  HISTORY     :'sf_history',
+  GOALS       :'sf_goals',
+  NIGHT       :'sf_night',
+  LAST_REPORT :'sf_last_report',
+  SLEEP_LOGS  :'sf_sleep_logs',
 };
 
-const pad2 = n => String(Math.floor(n)).padStart(2,'0');
+/* ── 유틸리티 ── */
+const pad2   = n => String(Math.floor(n)).padStart(2,'0');
 const msToHMS = ms => { const t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60; return h>0?`${pad2(h)}:${pad2(m)}:${pad2(s)}`:`${pad2(m)}:${pad2(s)}`; };
 const msToReadable = ms => { const t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60; if(h>0)return`${h}시간 ${pad2(m)}분`; if(m>0)return`${m}분 ${pad2(s)}초`; return`${s}초`; };
 const getDday = () => { const a=new Date();a.setHours(0,0,0,0);const b=new Date(SUNEUNG);b.setHours(0,0,0,0);return Math.max(0,Math.round((b-a)/86400000)); };
@@ -36,6 +50,7 @@ const todayStr = () => new Date().toLocaleDateString('ko-KR',{year:'numeric',mon
 const lsGet = k => { try{return JSON.parse(localStorage.getItem(k));}catch{return null;} };
 const lsSet = (k,v) => localStorage.setItem(k,JSON.stringify(v));
 
+/* ── 집중 점수 계산 ── */
 function calcLiveScore(tMs, sess, dist, doneT, totalT, st) {
   if(tMs===0&&sess.length===0) return null;
   let score = 0;
@@ -49,6 +64,7 @@ function calcLiveScore(tMs, sess, dist, doneT, totalT, st) {
   return Math.max(0, Math.min(100, score));
 }
 
+/* ══════════════════════════════════════════════════════════ */
 function checkDateRollover() {
   const last=lsGet(K.TODAY_DATE), now=todayStr();
   if(last===now) return;
@@ -77,6 +93,7 @@ const DDAY=getDday();
 document.getElementById('dDayCount').textContent=DDAY;
 document.getElementById('ddayBadge').textContent=`수능 D-${DDAY}`;
 
+/* ── 바텀 탭 ── */
 let activeTab = 'today';
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -91,6 +108,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
   });
 });
 
+/* ── 야간 모드 ── */
 const nightToggle=document.getElementById('nightToggle');
 const nightIcon=document.getElementById('nightIcon');
 function setNight(on){
@@ -102,6 +120,7 @@ function setNight(on){
 (()=>{const s=lsGet(K.NIGHT);if(s==='on')setNight(true);else if(s==='off')setNight(false);else setNight(new Date().getHours()>=22);})();
 nightToggle.addEventListener('click',()=>{const on=!document.body.classList.contains('night');setNight(on);lsSet(K.NIGHT,on?'on':'off');});
 
+/* ══════════════════════════════════════════════════════════ */
 let todayTasks=lsGet(K.TODAY_TASKS)||[];
 let tomorrowTasks=lsGet(K.TMRW_TASKS)||[];
 let selectedCat='국어';
@@ -164,11 +183,13 @@ document.getElementById('categoryChips').addEventListener('click',e=>{
   const chip=e.target.closest('.chip'); if(!chip) return;
   selectedCat=chip.dataset.cat; syncSubjectChips(selectedCat);
 });
-document.getElementById('timerCategoryChips').addEventListener('click',e=>{
+const _timerChips=document.getElementById('timerCategoryChips');
+if(_timerChips) _timerChips.addEventListener('click',e=>{
   const chip=e.target.closest('.chip'); if(!chip||chip.disabled) return;
   selectedCat=chip.dataset.cat; syncSubjectChips(selectedCat);
 });
 
+/* ── 목표 설정 ── */
 let goals=lsGet(K.GOALS)||{국어:60,영어:60,수학:90,사회문화:45,생활과윤리:45};
 function renderGoalBars(){
   const bars=document.getElementById('goalBars'); bars.innerHTML='';
@@ -190,6 +211,7 @@ document.getElementById('goalEditBtn').addEventListener('click',()=>{
 document.getElementById('goalSave').addEventListener('click',()=>{ document.querySelectorAll('.goal-input-field').forEach(i=>{goals[i.dataset.sub]=parseInt(i.value)||0;}); lsSet(K.GOALS,goals); document.getElementById('goalEditPanel').style.display='none'; renderGoalBars(); });
 document.getElementById('goalCancel').addEventListener('click',()=>{ document.getElementById('goalEditPanel').style.display='none'; });
 
+/* ══════════════════════════════════════════════════════════ */
 let timerState=lsGet(K.TIMER_STATE)||{elapsed:0,subjectTime:{},sessions:[],distractions:0,totalMs:0};
 let elapsed=timerState.elapsed||0, sessions=timerState.sessions||[], distractions=timerState.distractions||0, totalMs=timerState.totalMs||0, subjectTime=timerState.subjectTime||{};
 let ticker=null, startTime=null, running=false;
@@ -232,10 +254,9 @@ function updateTimerUI(){
   document.getElementById('swDisplay').classList.toggle('running',running);
   document.getElementById('brandDot').classList.toggle('pulse',running);
   document.getElementById('fsHint').textContent=running?`🟢 ${selectedCat} 집중 중`:inSession?`${selectedCat} 일시정지됨 · 종료하려면 종료를 눌러요`:'▶ 시작 버튼을 눌러 집중을 시작해요';
+  // 세션 진행 중에는 과목 변경 잠금
   document.querySelectorAll('#timerCategoryChips .chip').forEach(c=>{ c.disabled=inSession; });
 }
-
-/* script.js - startTimer 함수 수정 */
 
 function startTimer(){
   if(sessionElapsedAtStart===null){
@@ -244,15 +265,6 @@ function startTimer(){
     lsSet('sf_session_start',sessionStart);
     lsSet('sf_session_elapsed_at_start',sessionElapsedAtStart);
   }
-
-  // --- 전체화면 전환 로직 추가 ---
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(err => {
-      console.warn(`전체화면 전환 실패: ${err.message}`);
-    });
-  }
-  // ----------------------------
-
   startTime=Date.now(); ticker=setInterval(tick,30); running=true;
   updateTimerUI(); startNotifTimer();
 }
@@ -285,6 +297,7 @@ document.getElementById('endBtn').addEventListener('click',endSession);
 document.getElementById('modalClose').addEventListener('click',()=>document.getElementById('modalBackdrop').classList.remove('show'));
 document.getElementById('modalContinue').addEventListener('click',()=>document.getElementById('modalBackdrop').classList.remove('show'));
 
+/* ══════════════════════════════════════════════════════════ */
 let sleepStartTime = lsGet('sf_temp_sleep'); 
 function updateSleepUI() {
   const status = document.getElementById('sleepStatus'), btnSleep = document.getElementById('btnSleepNow'), btnWake = document.getElementById('btnWakeUp');
@@ -309,6 +322,7 @@ document.getElementById('btnWakeUp').addEventListener('click', () => {
   updateSleepUI(); showNotif('상쾌한 아침이에요! 오늘도 화이팅 ☀️', '✨');
 });
 
+/* ══════════════════════════════════════════════════════════ */
 let notifTimer=null;
 function showNotif(msg,icon='🔔'){
   const t=document.getElementById('notifToast'); document.getElementById('notifMsg').textContent=msg;
@@ -322,6 +336,7 @@ function showOverlay(){ if(running) { distractions++; saveTimerState(); focusOve
 document.getElementById('overlayBackBtn').addEventListener('click',()=>focusOverlay.classList.remove('show'));
 document.addEventListener('visibilitychange',()=>{ if(document.hidden && running) showOverlay(); });
 
+/* ══════════════════════════════════════════════════════════ */
 let weeklyChartInst=null, sleepChartInst=null, subjectChartInst=null;
 
 function showReport() {
@@ -341,7 +356,7 @@ function showReport() {
 
   document.getElementById('aiFeedback').textContent = '';
 
-  // 모달 먼저 표시 → canvas 크기가 정상으로 잡힌 뒤 chart 생성
+  // 모달을 먼저 표시한 뒤 chart 생성 (hidden canvas에서 생성하면 크기가 0으로 잡혀 렌더링 실패)
   document.getElementById('modalBackdrop').classList.add('show');
 
   const subEntries = Object.entries(subjectTime).filter(([,v]) => v > 0);
@@ -400,34 +415,56 @@ function renderSleepChart(){
   const canvas = document.getElementById('sleepChart');
   const noData = document.getElementById('sleepNoData');
   if (!canvas) return;
+
   if (sleepLogs.length === 0) {
     canvas.style.display = 'none';
     if (noData) noData.style.display = 'flex';
     return;
   }
+
   canvas.style.display = 'block';
   if (noData) noData.style.display = 'none';
+
   const labels = sleepLogs.map(l => l.date.slice(-5));
   const data = sleepLogs.map(l => Math.round(l.durationMin / 60 * 10) / 10);
+
   if (sleepChartInst) sleepChartInst.destroy();
+
   sleepChartInst = new Chart(canvas, {
     type: 'bar',
     data: {
       labels,
-      datasets: [{ label: '수면 시간', data, backgroundColor: 'rgba(204,93,232,.2)', borderColor: '#cc5de8', borderWidth: 2, borderRadius: 6 }]
+      datasets: [{
+        label: '수면 시간',
+        data,
+        backgroundColor: 'rgba(204,93,232,.2)',
+        borderColor: '#cc5de8',
+        borderWidth: 2,
+        borderRadius: 6
+      }]
     },
     options: {
-      responsive: true, plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, max: 12, ticks: { callback: v => v + 'h', font: { size: 11 } } }, x: { ticks: { font: { size: 11 } } } }
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 12,
+          ticks: { callback: v => v + 'h', font: { size: 11 } }
+        },
+        x: { ticks: { font: { size: 11 } } }
+      }
     }
   });
 }
 
+/* ══════════════════════════════════════════════════════════ */
 function renderWeeklyReportContent() {
   const all = getHistoryWithToday();
   const sleepLogs = lsGet(K.SLEEP_LOGS) || [];
   const weekTotal = all.reduce((s,d)=>s+d.totalMs, 0);
   const avgSleep = sleepLogs.length ? Math.round(sleepLogs.reduce((s,l)=>s+l.durationMin,0)/sleepLogs.length) : 0;
+  
   let html = `
     <div class="weekly-report-section">
       <h3>📊 주간 통계</h3>
@@ -437,20 +474,33 @@ function renderWeeklyReportContent() {
         <div class="wr-stat"><div class="wr-stat-val">${avgSleep}분</div><div class="wr-stat-lbl">평균수면</div></div>
       </div>
     </div>
+    
     <div class="weekly-report-section">
       <h3>📚 과목별 학습시간</h3>
-      <div class="wr-subject-bars">`;
+      <div class="wr-subject-bars">
+  `;
+  
   const weekSubMs = {};
   all.forEach(d => Object.entries(d.subjectTime||{}).forEach(([k,v]) => weekSubMs[k] = (weekSubMs[k]||0) + v));
+  
   SUBJECTS.forEach(sub => {
     const min = Math.round((weekSubMs[sub]||0)/60000);
     const goalMin = goals[sub] || 0;
     const pct = goalMin > 0 ? Math.round(min/goalMin*100) : 0;
-    html += `<div class="wr-sub-row"><span class="wr-sub-name">${sub}</span><div class="wr-sub-track"><div class="wr-sub-fill" style="width:${Math.min(100,pct)}%;background:${SUBJECT_COLORS[sub]}"></div></div><span class="wr-sub-time">${min}분</span></div>`;
+    html += `
+      <div class="wr-sub-row">
+        <span class="wr-sub-name">${sub}</span>
+        <div class="wr-sub-track"><div class="wr-sub-fill" style="width:${Math.min(100,pct)}%;background:${SUBJECT_COLORS[sub]}"></div></div>
+        <span class="wr-sub-time">${min}분</span>
+      </div>
+    `;
   });
+  
   html += `</div></div>`;
+  
   const avgScore = all.length > 0 ? Math.round(all.reduce((s,d)=>s+(calcLiveScore(d.totalMs,d.sessions,d.distractions,d.doneTasks,d.totalTasks,d.subjectTime)||0),0)/all.length) : 0;
   html += `<div class="wr-insight">주간 평균 집중점수: <strong>${avgScore}점</strong></div>`;
+  
   document.getElementById('weeklyReportBody').innerHTML = html;
 }
 
@@ -462,10 +512,12 @@ document.getElementById('weeklyReportClose').addEventListener('click', () => {
   document.getElementById('weeklyReportBackdrop').classList.remove('show');
 });
 document.getElementById('weeklyReportBackdrop').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('weeklyReportBackdrop'))
+  if (e.target === document.getElementById('weeklyReportBackdrop')) {
     document.getElementById('weeklyReportBackdrop').classList.remove('show');
+  }
 });
 
+/* ══════════════════════════════════════════════════════════ */
 function collectData(){
   const all=getHistoryWithToday(), sleepLogs=lsGet(K.SLEEP_LOGS)||[];
   const avgSleep = sleepLogs.length ? Math.round(sleepLogs.reduce((s,l)=>s+l.durationMin,0)/sleepLogs.length) : 0;
@@ -520,4 +572,5 @@ async function runCoachAnalysis(){
 document.getElementById('coachRunBtn').addEventListener('click', runCoachAnalysis);
 
 /* ── 초기 실행 ── */
-renderToday(); renderTomorrow(); renderGoalBars(); updateAccumLabel(); updateLiveScore(); updateSleepUI();
+renderToday(); renderTomorrow(); renderGoalBars(); updateAccumLabel(); updateLiveScore(); updateSleepUI(); updateTimerUI();
+if(running) tick();
