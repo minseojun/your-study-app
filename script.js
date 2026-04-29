@@ -210,7 +210,10 @@ document.getElementById('goalCancel').addEventListener('click',()=>{ document.ge
 /* ══════════════════════════════════════════════════════════ */
 let timerState=lsGet(K.TIMER_STATE)||{elapsed:0,subjectTime:{},sessions:[],distractions:0,totalMs:0};
 let elapsed=timerState.elapsed||0, sessions=timerState.sessions||[], distractions=timerState.distractions||0, totalMs=timerState.totalMs||0, subjectTime=timerState.subjectTime||{};
-let ticker=null, startTime=null, running=false, sessionStart=null, laps=[], lastLap=0, isFS=false;
+let ticker=null, startTime=null, running=false;
+let sessionStart=lsGet('sf_session_start')||null;
+let sessionElapsedAtStart=lsGet('sf_session_elapsed_at_start');
+if(sessionElapsedAtStart!==null) sessionElapsedAtStart=Number(sessionElapsedAtStart);
 
 const saveTimerState=()=>lsSet(K.TIMER_STATE,{elapsed,subjectTime,sessions,distractions,totalMs});
 const nowMs=()=>running?elapsed+(Date.now()-startTime):elapsed;
@@ -222,7 +225,7 @@ function tick(){
   document.getElementById('swSeconds').textContent=pad2(t%60);
   document.getElementById('swMs').textContent='.'+pad2(Math.floor((ms%1000)/10));
 }
-function updateAccumLabel(){ document.getElementById('swAccum').textContent=msToReadable(totalMs)||'0분'; }
+function updateAccumLabel(){ document.getElementById('swAccum').textContent=msToReadable(nowMs())||'0분'; }
 function updateLiveScore(){
   const done=todayTasks.filter(t=>t.done).length;
   const score=calcLiveScore(totalMs,sessions,distractions,done,todayTasks.length,subjectTime);
@@ -231,36 +234,57 @@ function updateLiveScore(){
   if(score!==null) numEl.style.color=score>=80?'var(--ok)':score>=50?'var(--accent)':'var(--danger)';
 }
 
-function startTimer(){
-  const el=document.documentElement; if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
-  startTime=Date.now(); sessionStart=Date.now(); ticker=setInterval(tick, 30); running=true;
-  const btn=document.getElementById('startStopBtn'); btn.textContent='정지'; btn.classList.add('stop');
-  document.getElementById('lapBtn').disabled=false; document.getElementById('swDisplay').classList.add('running');
-  document.getElementById('brandDot').classList.add('pulse'); document.getElementById('fsHint').textContent='🟢 집중 모드 실행 중';
-  startNotifTimer();
+function updateTimerUI(){
+  const btn=document.getElementById('startStopBtn');
+  const endBtn=document.getElementById('endBtn');
+  const inSession=sessionElapsedAtStart!==null;
+  if(running){ btn.textContent='일시정지'; btn.classList.add('stop'); }
+  else if(inSession){ btn.textContent='계속'; btn.classList.remove('stop'); }
+  else { btn.textContent='시작'; btn.classList.remove('stop'); }
+  endBtn.disabled=!inSession;
+  document.getElementById('swDisplay').classList.toggle('running',running);
+  document.getElementById('brandDot').classList.toggle('pulse',running);
+  document.getElementById('fsHint').textContent=running?'🟢 집중 중':inSession?'일시정지됨 · 종료하려면 종료를 눌러요':'▶ 시작 버튼을 눌러 집중을 시작해요';
 }
-function stopTimer(){
-  const sMs=Date.now()-sessionStart, startHour=new Date(sessionStart).getHours();
-  sessions=[...sessions,{ms:sMs,startHour}]; totalMs+=sMs; subjectTime[selectedCat]=(subjectTime[selectedCat]||0)+sMs;
-  elapsed+=Date.now()-startTime; clearInterval(ticker); running=false;
-  const btn=document.getElementById('startStopBtn'); btn.textContent='계속'; btn.classList.remove('stop');
-  document.getElementById('lapBtn').disabled=true; document.getElementById('swDisplay').classList.remove('running');
-  document.getElementById('brandDot').classList.remove('pulse'); document.getElementById('fsHint').textContent='▶ 시작 시 전체화면으로 전환돼요';
-  updateAccumLabel(); saveTimerState(); renderGoalBars(); updateLiveScore(); stopNotifTimer();
+
+function startTimer(){
+  if(sessionElapsedAtStart===null){
+    sessionElapsedAtStart=elapsed;
+    sessionStart=Date.now();
+    lsSet('sf_session_start',sessionStart);
+    lsSet('sf_session_elapsed_at_start',sessionElapsedAtStart);
+  }
+  startTime=Date.now(); ticker=setInterval(tick,30); running=true;
+  updateTimerUI(); startNotifTimer();
+}
+
+function pauseTimer(){
+  elapsed+=Date.now()-startTime; startTime=null;
+  clearInterval(ticker); running=false;
+  saveTimerState(); updateTimerUI(); updateAccumLabel(); stopNotifTimer();
+}
+
+function endSession(){
+  if(running){ elapsed+=Date.now()-startTime; startTime=null; clearInterval(ticker); running=false; stopNotifTimer(); }
+  const sMs=Math.max(0,elapsed-sessionElapsedAtStart);
+  if(sMs>0){
+    const startHour=new Date(sessionStart).getHours();
+    sessions=[...sessions,{ms:sMs,startHour}];
+    subjectTime[selectedCat]=(subjectTime[selectedCat]||0)+sMs;
+  }
+  totalMs=elapsed;
+  sessionElapsedAtStart=null; sessionStart=null;
+  localStorage.removeItem('sf_session_start');
+  localStorage.removeItem('sf_session_elapsed_at_start');
+  updateTimerUI(); updateAccumLabel(); saveTimerState(); renderGoalBars(); updateLiveScore();
   if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
   showReport();
 }
-function resetTimer(){
-  elapsed=0; sessions=[]; totalMs=0; distractions=0; subjectTime={}; saveTimerState();
-  ['swHours','swMinutes','swSeconds'].forEach(id=>document.getElementById(id).textContent='00');
-  document.getElementById('swMs').textContent='.00'; updateAccumLabel(); updateLiveScore(); renderGoalBars();
-  document.getElementById('startStopBtn').textContent='시작';
-}
-document.getElementById('startStopBtn').addEventListener('click',()=>running?stopTimer():startTimer());
-document.getElementById('resetBtn').addEventListener('click',resetTimer);
+
+document.getElementById('startStopBtn').addEventListener('click',()=>running?pauseTimer():startTimer());
+document.getElementById('endBtn').addEventListener('click',endSession);
 document.getElementById('modalClose').addEventListener('click',()=>document.getElementById('modalBackdrop').classList.remove('show'));
 document.getElementById('modalContinue').addEventListener('click',()=>document.getElementById('modalBackdrop').classList.remove('show'));
-document.getElementById('modalReset').addEventListener('click',()=>{ document.getElementById('modalBackdrop').classList.remove('show'); resetTimer(); });
 
 /* ══════════════════════════════════════════════════════════ */
 let sleepStartTime = lsGet('sf_temp_sleep'); 
