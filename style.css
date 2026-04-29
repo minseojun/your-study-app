@@ -402,6 +402,10 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
 .toggle-track::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .toggle-switch input:checked+.toggle-track::after{transform:translateX(16px)}
 .fs-hint{text-align:center;font-size:.71rem;color:var(--text-3)}
+.timer-subject-row{padding:2px 0}
+#timerCategoryChips{display:flex;gap:5px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;scrollbar-width:none}
+#timerCategoryChips::-webkit-scrollbar{display:none}
+#timerCategoryChips .chip:disabled{opacity:.38;cursor:not-allowed;pointer-events:none}
 .laps-header{display:none;justify-content:space-between;padding:0 4px 7px;font-size:.68rem;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
 .laps-header.show{display:flex}
 .laps-list{list-style:none;display:flex;flex-direction:column;gap:2px;max-height:140px;overflow-y:auto}
