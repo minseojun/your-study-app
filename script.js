@@ -43,7 +43,7 @@ const pad2        = n => String(Math.floor(n)).padStart(2,'0');
 const msToHMS     = ms => { const t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60; return h>0?`${pad2(h)}:${pad2(m)}:${pad2(s)}`:`${pad2(m)}:${pad2(s)}`; };
 const msToReadable= ms => { const t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60; if(h>0)return`${h}시간 ${pad2(m)}분`; if(m>0)return`${m}분 ${pad2(s)}초`; return`${s}초`; };
 const getDday     = () => { const a=new Date();a.setHours(0,0,0,0);const b=new Date(SUNEUNG);b.setHours(0,0,0,0);return Math.max(0,Math.round((b-a)/86400000)); };
-const todayStr    = () => new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\.\s*/g,'-').replace(/-$/,'');
+const todayStr    = () => { const d=new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
 const lsGet       = k => { try{return JSON.parse(localStorage.getItem(k));}catch{return null;} };
 const lsSet       = (k,v) => localStorage.setItem(k,JSON.stringify(v));
 
@@ -613,10 +613,11 @@ document.getElementById('weeklyReportBackdrop').addEventListener('click',e=>{
     const panel = document.getElementById('manualInlinePanel');
     const btn   = document.getElementById('manualToggleBtn');
     const wrap  = btn.closest('.manual-inline-wrap');
-    const open  = panel.style.display === 'none';
-    panel.style.display = open ? 'block' : 'none';
-    btn.classList.toggle('open', open);
-    wrap.classList.toggle('open', open);
+    // display가 'none' 이거나 비어있으면(HTML inline style 없을 때) 닫힌 상태로 간주
+    const isClosed = !panel.style.display || panel.style.display === 'none';
+    panel.style.display = isClosed ? 'block' : 'none';
+    btn.classList.toggle('open', isClosed);
+    if(wrap) wrap.classList.toggle('open', isClosed);
   });
 
   // 과목 칩
