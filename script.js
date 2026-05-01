@@ -274,21 +274,60 @@ let sessionStart = lsGet('sf_session_start') || null;
 let sessionElapsedAtStart = lsGet('sf_session_elapsed_at_start');
 if(sessionElapsedAtStart!==null) sessionElapsedAtStart=Number(sessionElapsedAtStart);
 
-/* ── 앱 재시작 시 백그라운드 경과 시간 복원 (iOS 프로세스 강제종료 대응) ──
-   visibilitychange 없이 앱이 재시작될 때 sf_bg_start가 남아있으면 elapsed 보정 */
+/* ── 앱 재시작 시 미완료 세션 복원 ──────────────────────────
+   iOS 강제종료 / 스와이프 킬 등으로 endSession()이 실행되지
+   못한 채 앱이 죽었을 때, 다음 두 가지 소스로 최대한 복원한다.
+
+   소스 A: sf_bg_start + sf_bg_elapsed
+     → 백그라운드 진입 순간 저장된 타임스탬프
+     → 없으면 소스 B만으로 복원 (자동저장 기준)
+
+   소스 B: sf_timer_state (30초마다 자동저장된 값)
+     → 마지막 자동저장 시점까지의 elapsed / subjectTime 포함
+
+   두 소스를 합쳐서 sessions 배열과 subjectTime을 직접 구성한다.
+   복원 후 타이머는 일시정지 상태로 표시 → 유저가 계속/종료 선택.
+   ──────────────────────────────────────────────────────────── */
 (()=>{
-  const bgStart   = lsGet('sf_bg_start');
-  const bgElapsed = lsGet('sf_bg_elapsed');
+  if(sessionElapsedAtStart === null) return; // 진행 중인 세션 없음
+
+  const bgStart    = lsGet('sf_bg_start');
+  const bgElapsed  = lsGet('sf_bg_elapsed');
+  const savedSubject = lsGet('sf_autosave_subject') || '국어';
+
+  // 경과 시간 결정
+  let recoveredElapsed = elapsed; // 기본값: 마지막 saveTimerState 값
   if(bgStart !== null && bgElapsed !== null){
-    if(sessionElapsedAtStart !== null){
-      elapsed = bgElapsed + (Date.now() - bgStart);
-      const _ts = lsGet(K.TIMER_STATE) || {};
-      _ts.elapsed = elapsed;
-      lsSet(K.TIMER_STATE, _ts);
-    }
-    localStorage.removeItem('sf_bg_start');
-    localStorage.removeItem('sf_bg_elapsed');
+    // 백그라운드 진입 이후 경과까지 포함
+    recoveredElapsed = bgElapsed + (Date.now() - bgStart);
   }
+
+  if(recoveredElapsed > elapsed){
+    // 미완료 세션 시간 계산
+    const sMs = Math.max(0, recoveredElapsed - sessionElapsedAtStart);
+    if(sMs > 0){
+      // sessions 배열에 복원 세션 추가
+      const startHour = sessionStart ? new Date(sessionStart).getHours() : new Date().getHours();
+      sessions = [...sessions, {ms: sMs, startHour, recovered: true}];
+      // subjectTime 누적
+      subjectTime[savedSubject] = (subjectTime[savedSubject]||0) + sMs;
+    }
+    elapsed  = recoveredElapsed;
+    totalMs  = recoveredElapsed;
+
+    // 복원된 상태로 저장
+    lsSet(K.TIMER_STATE, {elapsed, subjectTime, sessions, distractions, totalMs});
+
+    // 세션은 이미 복원했으므로 미완료 세션 키 정리
+    sessionElapsedAtStart = null;
+    sessionStart = null;
+    localStorage.removeItem('sf_session_start');
+    localStorage.removeItem('sf_session_elapsed_at_start');
+    localStorage.removeItem('sf_autosave_subject');
+  }
+
+  localStorage.removeItem('sf_bg_start');
+  localStorage.removeItem('sf_bg_elapsed');
 })();
 
 /* ── 인강 모드 ── */
@@ -346,6 +385,33 @@ function updateTimerUI(){
   document.querySelectorAll('#timerCategoryChips .chip').forEach(c=>{ c.disabled=inSession; });
 }
 
+/* 30초마다 현재 진행 상태를 통째로 저장 — iOS 강제종료 대비 */
+let autoSaveTicker = null;
+function startAutoSave(){
+  stopAutoSave();
+  autoSaveTicker = setInterval(()=>{
+    if(!running) return;
+    // 현재 실시간 elapsed 계산해서 저장
+    const liveElapsed = elapsed + (Date.now() - startTime);
+    // subjectTime에도 현재 세션 진행분을 반영해서 저장
+    const liveSubjectTime = {...subjectTime,
+      [selectedCat]: (subjectTime[selectedCat]||0) + (liveElapsed - elapsed)
+    };
+    lsSet(K.TIMER_STATE, {
+      elapsed: liveElapsed,
+      subjectTime: liveSubjectTime,
+      sessions,
+      distractions,
+      totalMs: liveElapsed,
+    });
+    // 세션 기준점도 갱신 (다음 자동저장 기준)
+    lsSet('sf_autosave_subject', selectedCat);
+  }, 30000);
+}
+function stopAutoSave(){
+  if(autoSaveTicker){ clearInterval(autoSaveTicker); autoSaveTicker=null; }
+}
+
 function startTimer(){
   if(sessionElapsedAtStart===null){
     sessionElapsedAtStart = elapsed;
@@ -354,15 +420,16 @@ function startTimer(){
     lsSet('sf_session_elapsed_at_start', sessionElapsedAtStart);
   }
   startTime = Date.now(); ticker = setInterval(tick,30); running = true;
-  updateTimerUI(); startNotifTimer();
+  updateTimerUI(); startNotifTimer(); startAutoSave();
 }
 function pauseTimer(){
   elapsed += Date.now()-startTime; startTime=null;
   clearInterval(ticker); running=false;
-  saveTimerState(); updateTimerUI(); updateAccumLabel(); stopNotifTimer();
+  stopAutoSave(); saveTimerState(); updateTimerUI(); updateAccumLabel(); stopNotifTimer();
 }
 function endSession(){
   if(running){ elapsed+=Date.now()-startTime; startTime=null; clearInterval(ticker); running=false; stopNotifTimer(); }
+  stopAutoSave();
   const sMs = Math.max(0, elapsed-sessionElapsedAtStart);
   if(sMs>0){
     const startHour = new Date(sessionStart).getHours();
@@ -373,6 +440,7 @@ function endSession(){
   sessionElapsedAtStart=null; sessionStart=null;
   localStorage.removeItem('sf_session_start');
   localStorage.removeItem('sf_session_elapsed_at_start');
+  localStorage.removeItem('sf_autosave_subject');
   lectureMode=false; updateLectureModeBtn();
   updateTimerUI(); updateAccumLabel(); saveTimerState(); renderGoalBars(); updateLiveScore();
   if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
