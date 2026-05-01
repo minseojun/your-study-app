@@ -293,7 +293,7 @@ if(sessionElapsedAtStart!==null) sessionElapsedAtStart=Number(sessionElapsedAtSt
 
   const bgStart      = lsGet('sf_bg_start');
   const bgElapsed    = lsGet('sf_bg_elapsed');
-  const savedSubject = lsGet('sf_autosave_subject') || '국어';
+  const savedSubject = lsGet('sf_autosave_subject') || lsGet('sf_last_subject') || '국어';
 
   // sf_bg_start가 있으면 그 기준으로, 없으면 자동저장 elapsed 그대로
   if(bgStart !== null && bgElapsed !== null){
@@ -307,11 +307,11 @@ if(sessionElapsedAtStart!==null) sessionElapsedAtStart=Number(sessionElapsedAtSt
     localStorage.removeItem('sf_bg_elapsed');
   }
 
-  // selectedCat을 저장된 과목으로 복원
-  if(savedSubject) selectedCat = savedSubject;
+  // selectedCat 복원 — 변수 + 칩 UI 동기화
+  selectedCat = savedSubject;
+  // syncSubjectChips는 DOM 준비 후 실행되어야 해서 플래그로 처리
+  window._needChipSync = true;
 
-  // sessionElapsedAtStart는 유지 → updateTimerUI()가 "계속" 버튼 상태로 표시
-  // 세션 키 정리는 하지 않음 — endSession() 호출 시 정상 처리됨
   localStorage.removeItem('sf_autosave_subject');
 })();
 
@@ -367,7 +367,9 @@ function updateTimerUI(){
     ? `🟢 ${selectedCat} 집중 중`
     : inSession ? `${selectedCat} 일시정지됨 · 종료하려면 종료를 눌러요`
     : '▶ 시작 버튼을 눌러 집중을 시작해요';
-  document.querySelectorAll('#timerCategoryChips .chip').forEach(c=>{ c.disabled=inSession; });
+  // 타이머가 실제로 돌고 있을 때만 과목 변경 잠금
+  // 일시정지/복원 상태에서는 과목 변경 허용
+  document.querySelectorAll('#timerCategoryChips .chip').forEach(c=>{ c.disabled=running; });
 }
 
 /* 30초마다 현재 진행 상태를 저장 — iOS 강제종료 대비
@@ -806,3 +808,22 @@ renderToday(); renderTomorrow(); renderGoalBars();
 updateAccumLabel(); updateLiveScore(); updateSleepUI();
 updateTimerUI(); updateLectureModeBtn();
 if(running) tick();
+
+// 복원 후 칩 UI 동기화 (DOM이 준비된 이후 실행)
+if(window._needChipSync){
+  syncSubjectChips(selectedCat);
+  window._needChipSync = false;
+}
+
+// 과목 칩 변경 시 localStorage에도 저장 (재시작 후 복원용)
+function syncSubjectChipsAndSave(cat){
+  selectedCat = cat;
+  syncSubjectChips(cat);
+  lsSet('sf_last_subject', cat);
+}
+// 기존 chip 이벤트리스너를 감싸서 저장까지 처리
+document.getElementById('timerCategoryChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip');
+  if(!chip || chip.disabled) return;
+  syncSubjectChipsAndSave(chip.dataset.cat);
+}, true); // capture=true로 기존 리스너보다 먼저 실행되도록
