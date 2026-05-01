@@ -276,56 +276,50 @@ if(sessionElapsedAtStart!==null) sessionElapsedAtStart=Number(sessionElapsedAtSt
 
 /* ── 앱 재시작 시 미완료 세션 복원 ──────────────────────────
    iOS 강제종료 / 스와이프 킬 등으로 endSession()이 실행되지
-   못한 채 앱이 죽었을 때, 다음 두 가지 소스로 최대한 복원한다.
+   못한 채 앱이 죽었을 때 최대한 복원한다.
 
    소스 A: sf_bg_start + sf_bg_elapsed
-     → 백그라운드 진입 순간 저장된 타임스탬프
-     → 없으면 소스 B만으로 복원 (자동저장 기준)
+     → 백그라운드 진입 순간 저장된 타임스탬프 (가장 정확)
+   소스 B: sf_timer_state.elapsed (30초마다 자동저장된 값)
+     → sf_bg_start 없을 때 fallback
 
-   소스 B: sf_timer_state (30초마다 자동저장된 값)
-     → 마지막 자동저장 시점까지의 elapsed / subjectTime 포함
-
-   두 소스를 합쳐서 sessions 배열과 subjectTime을 직접 구성한다.
-   복원 후 타이머는 일시정지 상태로 표시 → 유저가 계속/종료 선택.
+   subjectTime 누적은 여기서 직접 하지 않고,
+   sessions 배열에 복원 세션을 넣은 뒤 endSession 흐름과
+   동일하게 한 번만 처리한다.
+   복원 후 타이머는 일시정지 상태 → 유저가 계속/종료 선택.
    ──────────────────────────────────────────────────────────── */
 (()=>{
   if(sessionElapsedAtStart === null) return; // 진행 중인 세션 없음
 
-  const bgStart    = lsGet('sf_bg_start');
-  const bgElapsed  = lsGet('sf_bg_elapsed');
-  const savedSubject = lsGet('sf_autosave_subject') || '국어';
+  const bgStart      = lsGet('sf_bg_start');
+  const bgElapsed    = lsGet('sf_bg_elapsed');
+  const savedSubject = lsGet('sf_autosave_subject') || selectedCat || '국어';
 
-  // 경과 시간 결정
-  let recoveredElapsed = elapsed; // 기본값: 마지막 saveTimerState 값
+  // 경과 시간 결정: sf_bg_start가 있으면 그 기준이 가장 정확
+  let recoveredElapsed = elapsed; // fallback: 마지막 자동저장 elapsed
   if(bgStart !== null && bgElapsed !== null){
-    // 백그라운드 진입 이후 경과까지 포함
     recoveredElapsed = bgElapsed + (Date.now() - bgStart);
   }
 
-  if(recoveredElapsed > elapsed){
-    // 미완료 세션 시간 계산
-    const sMs = Math.max(0, recoveredElapsed - sessionElapsedAtStart);
-    if(sMs > 0){
-      // sessions 배열에 복원 세션 추가
-      const startHour = sessionStart ? new Date(sessionStart).getHours() : new Date().getHours();
-      sessions = [...sessions, {ms: sMs, startHour, recovered: true}];
-      // subjectTime 누적
-      subjectTime[savedSubject] = (subjectTime[savedSubject]||0) + sMs;
-    }
-    elapsed  = recoveredElapsed;
-    totalMs  = recoveredElapsed;
-
-    // 복원된 상태로 저장
+  // 복원할 가치 있는 시간이면 처리
+  const sMs = Math.max(0, recoveredElapsed - sessionElapsedAtStart);
+  if(sMs > 1000){ // 1초 미만은 무시
+    const startHour = sessionStart ? new Date(Number(sessionStart)).getHours() : new Date().getHours();
+    // sessions에 추가 (subjectTime 누적은 여기서 하지 않음)
+    sessions = [...sessions, {ms: sMs, startHour, cat: savedSubject, recovered: true}];
+    // subjectTime에 딱 한 번 누적
+    subjectTime[savedSubject] = (subjectTime[savedSubject]||0) + sMs;
+    elapsed = recoveredElapsed;
+    totalMs = recoveredElapsed;
     lsSet(K.TIMER_STATE, {elapsed, subjectTime, sessions, distractions, totalMs});
-
-    // 세션은 이미 복원했으므로 미완료 세션 키 정리
-    sessionElapsedAtStart = null;
-    sessionStart = null;
-    localStorage.removeItem('sf_session_start');
-    localStorage.removeItem('sf_session_elapsed_at_start');
-    localStorage.removeItem('sf_autosave_subject');
   }
 
+  // 미완료 세션 키 정리 (복원 완료)
+  sessionElapsedAtStart = null;
+  sessionStart = null;
+  localStorage.removeItem('sf_session_start');
+  localStorage.removeItem('sf_session_elapsed_at_start');
+  localStorage.removeItem('sf_autosave_subject');
   localStorage.removeItem('sf_bg_start');
   localStorage.removeItem('sf_bg_elapsed');
 })();
@@ -385,27 +379,23 @@ function updateTimerUI(){
   document.querySelectorAll('#timerCategoryChips .chip').forEach(c=>{ c.disabled=inSession; });
 }
 
-/* 30초마다 현재 진행 상태를 통째로 저장 — iOS 강제종료 대비 */
+/* 30초마다 현재 진행 상태를 저장 — iOS 강제종료 대비
+   subjectTime은 건드리지 않음. elapsed만 실시간 보정해서 저장.
+   과목 시간 누적은 endSession()에서 딱 한 번만 처리한다.     */
 let autoSaveTicker = null;
 function startAutoSave(){
   stopAutoSave();
   autoSaveTicker = setInterval(()=>{
     if(!running) return;
-    // 현재 실시간 elapsed 계산해서 저장
     const liveElapsed = elapsed + (Date.now() - startTime);
-    // subjectTime에도 현재 세션 진행분을 반영해서 저장
-    const liveSubjectTime = {...subjectTime,
-      [selectedCat]: (subjectTime[selectedCat]||0) + (liveElapsed - elapsed)
-    };
     lsSet(K.TIMER_STATE, {
       elapsed: liveElapsed,
-      subjectTime: liveSubjectTime,
+      subjectTime,        // 현재 세션 진행분 미포함 — endSession에서만 누적
       sessions,
       distractions,
       totalMs: liveElapsed,
     });
-    // 세션 기준점도 갱신 (다음 자동저장 기준)
-    lsSet('sf_autosave_subject', selectedCat);
+    lsSet('sf_autosave_subject', selectedCat); // 복원 시 과목 특정용
   }, 30000);
 }
 function stopAutoSave(){
