@@ -219,6 +219,31 @@ let sessionStart=lsGet('sf_session_start')||null;
 let sessionElapsedAtStart=lsGet('sf_session_elapsed_at_start');
 if(sessionElapsedAtStart!==null) sessionElapsedAtStart=Number(sessionElapsedAtStart);
 
+/* ── 인강 모드 ── */
+let lectureMode = false;
+
+function updateLectureModeBtn() {
+  const btn = document.getElementById('lectureModeBtn');
+  if (lectureMode) {
+    btn.textContent = '📺 인강 모드 ON · 탭하여 종료';
+    btn.classList.add('active');
+  } else {
+    btn.textContent = '📺 인강 시청';
+    btn.classList.remove('active');
+  }
+}
+
+document.getElementById('lectureModeBtn').addEventListener('click', () => {
+  lectureMode = !lectureMode;
+  updateLectureModeBtn();
+  showNotif(
+    lectureMode
+      ? '인강 모드 ON — 화면 이탈이 방해 횟수로 카운트되지 않아요'
+      : '인강 모드 OFF — 집중 모드로 돌아왔어요',
+    lectureMode ? '📺' : '✅'
+  );
+});
+
 const saveTimerState=()=>lsSet(K.TIMER_STATE,{elapsed,subjectTime,sessions,distractions,totalMs});
 const nowMs=()=>running?elapsed+(Date.now()-startTime):elapsed;
 
@@ -287,6 +312,9 @@ function endSession(){
   sessionElapsedAtStart=null; sessionStart=null;
   localStorage.removeItem('sf_session_start');
   localStorage.removeItem('sf_session_elapsed_at_start');
+  // 세션 종료 시 인강 모드 자동 해제
+  lectureMode = false;
+  updateLectureModeBtn();
   updateTimerUI(); updateAccumLabel(); saveTimerState(); renderGoalBars(); updateLiveScore();
   if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
   showReport();
@@ -332,7 +360,15 @@ function startNotifTimer(){ const mins=parseInt(document.getElementById('notifIn
 function stopNotifTimer(){ clearInterval(notifTimer); }
 
 const focusOverlay=document.getElementById('focusOverlay');
-function showOverlay(){ if(running) { distractions++; saveTimerState(); focusOverlay.classList.add('show'); updateLiveScore(); } }
+function showOverlay(){
+  // 인강 모드일 때는 방해 카운트 안 함
+  if(running && !lectureMode) {
+    distractions++;
+    saveTimerState();
+    focusOverlay.classList.add('show');
+    updateLiveScore();
+  }
+}
 document.getElementById('overlayBackBtn').addEventListener('click',()=>focusOverlay.classList.remove('show'));
 document.addEventListener('visibilitychange',()=>{ if(document.hidden && running) showOverlay(); });
 
@@ -377,7 +413,6 @@ function showReport() {
 
   document.getElementById('aiFeedback').textContent = '';
 
-  // 모달을 먼저 표시한 뒤 chart 생성 (hidden canvas에서 생성하면 크기가 0으로 잡혀 렌더링 실패)
   document.getElementById('modalBackdrop').classList.add('show');
 
   const subEntries = Object.entries(subjectTime).filter(([,v]) => v > 0);
@@ -593,5 +628,5 @@ async function runCoachAnalysis(){
 document.getElementById('coachRunBtn').addEventListener('click', runCoachAnalysis);
 
 /* ── 초기 실행 ── */
-renderToday(); renderTomorrow(); renderGoalBars(); updateAccumLabel(); updateLiveScore(); updateSleepUI(); updateTimerUI();
+renderToday(); renderTomorrow(); renderGoalBars(); updateAccumLabel(); updateLiveScore(); updateSleepUI(); updateTimerUI(); updateLectureModeBtn();
 if(running) tick();
