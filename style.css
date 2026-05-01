@@ -507,3 +507,38 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
   cursor: pointer;
   color: var(--text);
 }
+
+
+/* ── 인강 모드 버튼 ── */
+.btn-lecture-mode {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1.5px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: .85rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-lecture-mode.active {
+  border-style: solid;
+  border-color: #ffa94d;
+  background: rgba(255,169,77,.1);
+  color: #ffa94d;
+  font-weight: 500;
+}
+
+/* ── 집중 방해 수정 버튼 ── */
+.dist-adj-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text);
+}
