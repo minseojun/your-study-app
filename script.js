@@ -293,35 +293,26 @@ if(sessionElapsedAtStart!==null) sessionElapsedAtStart=Number(sessionElapsedAtSt
 
   const bgStart      = lsGet('sf_bg_start');
   const bgElapsed    = lsGet('sf_bg_elapsed');
-  const savedSubject = lsGet('sf_autosave_subject') || selectedCat || '국어';
+  const savedSubject = lsGet('sf_autosave_subject') || '국어';
 
-  // 경과 시간 결정: sf_bg_start가 있으면 그 기준이 가장 정확
-  let recoveredElapsed = elapsed; // fallback: 마지막 자동저장 elapsed
+  // sf_bg_start가 있으면 그 기준으로, 없으면 자동저장 elapsed 그대로
   if(bgStart !== null && bgElapsed !== null){
-    recoveredElapsed = bgElapsed + (Date.now() - bgStart);
+    const corrected = bgElapsed + (Date.now() - bgStart);
+    if(corrected > elapsed){
+      elapsed = corrected;
+      totalMs = corrected;
+      lsSet(K.TIMER_STATE, {elapsed, subjectTime, sessions, distractions, totalMs});
+    }
+    localStorage.removeItem('sf_bg_start');
+    localStorage.removeItem('sf_bg_elapsed');
   }
 
-  // 복원할 가치 있는 시간이면 처리
-  const sMs = Math.max(0, recoveredElapsed - sessionElapsedAtStart);
-  if(sMs > 1000){ // 1초 미만은 무시
-    const startHour = sessionStart ? new Date(Number(sessionStart)).getHours() : new Date().getHours();
-    // sessions에 추가 (subjectTime 누적은 여기서 하지 않음)
-    sessions = [...sessions, {ms: sMs, startHour, cat: savedSubject, recovered: true}];
-    // subjectTime에 딱 한 번 누적
-    subjectTime[savedSubject] = (subjectTime[savedSubject]||0) + sMs;
-    elapsed = recoveredElapsed;
-    totalMs = recoveredElapsed;
-    lsSet(K.TIMER_STATE, {elapsed, subjectTime, sessions, distractions, totalMs});
-  }
+  // selectedCat을 저장된 과목으로 복원
+  if(savedSubject) selectedCat = savedSubject;
 
-  // 미완료 세션 키 정리 (복원 완료)
-  sessionElapsedAtStart = null;
-  sessionStart = null;
-  localStorage.removeItem('sf_session_start');
-  localStorage.removeItem('sf_session_elapsed_at_start');
+  // sessionElapsedAtStart는 유지 → updateTimerUI()가 "계속" 버튼 상태로 표시
+  // 세션 키 정리는 하지 않음 — endSession() 호출 시 정상 처리됨
   localStorage.removeItem('sf_autosave_subject');
-  localStorage.removeItem('sf_bg_start');
-  localStorage.removeItem('sf_bg_elapsed');
 })();
 
 /* ── 인강 모드 ── */
@@ -504,21 +495,31 @@ document.getElementById('overlayBackBtn').addEventListener('click', ()=>focusOve
 
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden){
-    // 백그라운드 진입: 현재 시각 저장
+    // 백그라운드 진입: 현재 시각 저장 (running 중일 때만)
     if(running){
       lsSet('sf_bg_start', Date.now());
       lsSet('sf_bg_elapsed', elapsed);
+      lsSet('sf_autosave_subject', selectedCat);
       showOverlay();
     }
   } else {
-    // 포그라운드 복귀: 경과 시간 보정
+    // 포그라운드 복귀: running 여부와 무관하게 보정
+    // (iOS 리프레시 후 running=false로 초기화돼도 보정 필요)
     const bgStart   = lsGet('sf_bg_start');
     const bgElapsed = lsGet('sf_bg_elapsed');
-    if(bgStart!==null && bgElapsed!==null && running){
-      elapsed    = bgElapsed + (Date.now() - bgStart);
-      startTime  = Date.now();
+    if(bgStart !== null && bgElapsed !== null){
+      const corrected = bgElapsed + (Date.now() - bgStart);
+      elapsed   = corrected;
+      totalMs   = corrected;
+      if(running){
+        // 타이머가 살아있으면 기준점 갱신해서 계속 진행
+        startTime = Date.now();
+      }
+      saveTimerState();
       localStorage.removeItem('sf_bg_start');
       localStorage.removeItem('sf_bg_elapsed');
+      updateAccumLabel();
+      renderGoalBars();
     }
   }
 });
