@@ -496,3 +496,14 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
   text-align: center; 
   margin-top: 10px; 
 }
+.dist-adj-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text);
+}
