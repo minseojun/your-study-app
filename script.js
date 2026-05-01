@@ -354,6 +354,7 @@ function stopTimer() {
   sessionStart = null;
 
   clearInterval(ticker); ticker = null; running = false;
+  lectureMode = false; updateLectureModeBtn(); // 세션 종료 시 인강 모드 자동 해제
   startStopBtn.textContent = '계속';
   startStopBtn.classList.remove('stop');
   lapBtn.disabled = true;
@@ -441,14 +442,52 @@ function startNotifTimer() {}
 function stopNotifTimer()  {}
 
 /* ══════════════════════════════════════════════════════════
-   집중 오버레이 / 토스트
+   인강 모드
+   — 켜져 있는 동안 탭 전환/화면 이탈이 집중 방해로 카운트 안 됨
+   ══════════════════════════════════════════════════════════ */
+let lectureMode = false;
+
+function updateLectureModeBtn() {
+  const btn = document.getElementById('lectureModeBtn');
+  if (!btn) return;
+  if (lectureMode) {
+    btn.textContent = '📺 인강 모드 ON · 탭하여 종료';
+    btn.classList.add('active');
+  } else {
+    btn.textContent = '📺 인강 시청';
+    btn.classList.remove('active');
+  }
+}
+
+document.getElementById('lectureModeBtn').addEventListener('click', () => {
+  if (!running) { showNotif('타이머를 먼저 시작해주세요', '⚠️'); return; }
+  lectureMode = !lectureMode;
+  updateLectureModeBtn();
+  showNotif(
+    lectureMode
+      ? '인강 모드 ON — 화면 이탈이 방해로 카운트되지 않아요 📺'
+      : '인강 모드 OFF — 집중 모드로 돌아왔어요 💪',
+    lectureMode ? '📺' : '✅'
+  );
+});
    ══════════════════════════════════════════════════════════ */
 const focusOverlay=document.getElementById('focusOverlay');
 let alertLoop=null,toastTimer=null,overlayOn=false;
 function beep(){ try{const ctx=new(window.AudioContext||window.webkitAudioContext)();[[0,880],[.22,1100],[.44,880]].forEach(([d,f])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.value=f;const t=ctx.currentTime+d;g.gain.setValueAtTime(.15,t);g.gain.exponentialRampToValueAtTime(.001,t+.18);o.start(t);o.stop(t+.2);});}catch(_){} }
-function showOverlay(){ if(overlayOn)return;overlayOn=true;distractions++;saveTimerState();focusOverlay.classList.add('show');beep();alertLoop=setInterval(beep,2200); }
+function showOverlay(){
+  if(overlayOn) return;
+  if(lectureMode) return;   // 인강 모드 중엔 오버레이 안 뜸
+  overlayOn=true; distractions++; saveTimerState();
+  focusOverlay.classList.add('show');
+  beep(); alertLoop=setInterval(beep,2200);
+}
 function hideOverlay(){ overlayOn=false;focusOverlay.classList.remove('show');clearInterval(alertLoop);alertLoop=null; }
-function showFocusToast(){ const t=document.getElementById('focusToast');t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),4500); }
+function showFocusToast(){
+  if(lectureMode) return;   // 인강 모드 중엔 토스트도 안 뜸
+  const t=document.getElementById('focusToast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),4500);
+}
 document.getElementById('overlayBackBtn').addEventListener('click',()=>{hideOverlay();document.getElementById('focusToast').classList.remove('show');});
 document.getElementById('focusToastClose').addEventListener('click',()=>document.getElementById('focusToast').classList.remove('show'));
 function onFSChange(){ const nowFS=!!(document.fullscreenElement||document.webkitFullscreenElement);if(isFS&&!nowFS&&running)showOverlay();if(nowFS)hideOverlay();isFS=nowFS; }
