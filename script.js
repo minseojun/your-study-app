@@ -344,7 +344,28 @@ function showReport() {
   document.getElementById('rSessions').textContent = sessions.length + '회';
   const longest = sessions.length ? Math.max(...sessions.map(s => s.ms)) : 0;
   document.getElementById('rLongest').textContent = msToReadable(longest) || '0초';
-  document.getElementById('rDistractions').textContent = distractions + '회';
+
+  /* ── 집중 방해 횟수 수정 UI ── */
+  const rDist = document.getElementById('rDistractions');
+  rDist.innerHTML = `
+    <button class="dist-adj-btn" id="distMinus">−</button>
+    <span id="distCount">${distractions}</span>회
+    <button class="dist-adj-btn" id="distPlus">+</button>
+  `;
+  document.getElementById('distMinus').addEventListener('click', () => {
+    if (distractions > 0) {
+      distractions--;
+      saveTimerState();
+      document.getElementById('distCount').textContent = distractions;
+      updateLiveScore();
+    }
+  });
+  document.getElementById('distPlus').addEventListener('click', () => {
+    distractions++;
+    saveTimerState();
+    document.getElementById('distCount').textContent = distractions;
+    updateLiveScore();
+  });
 
   const timeline = document.getElementById('sessionTimeline');
   timeline.innerHTML = '';
