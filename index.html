@@ -237,17 +237,7 @@
 
           <!-- 인강 모드 버튼 -->
           <button id="lectureModeBtn" class="btn-lecture-mode">📺 인강 시청</button>
-
-          <div class="notif-row">
-            <span class="notif-label">⏰ 공부 알림</span>
-            <label class="toggle-switch"><input type="checkbox" id="notifToggle"/><span class="toggle-track"></span></label>
-            <select id="notifInterval" class="notif-select">
-              <option value="25">25분</option>
-              <option value="45" selected>45분</option>
-              <option value="60">60분</option>
-              <option value="90">90분</option>
-            </select>
-          </div>
+          
 
           <p id="fsHint" class="fs-hint">▶ 시작 버튼을 눌러 집중을 시작해요</p>
         </section>
@@ -264,6 +254,13 @@
           </div>
           <canvas id="weeklyChart" height="110"></canvas>
           <div id="weeklySubjects" class="weekly-subjects"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2 class="card-title">✏️ 공부기록 수동 추가</h2>
+          </div>
+          <div id="manualAddSection"></div>
         </section>
 
         <section class="card">
