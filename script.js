@@ -333,35 +333,71 @@ function startTimer() {
 
   ticker = setInterval(tick, 30);  // 화면 표시용만 — 시간 계산과 무관
 
-  startStopBtn.textContent = '정지';
+  startStopBtn.textContent = '⏸ 일시정지';
   startStopBtn.classList.add('stop');
   lapBtn.disabled = false;
+  document.getElementById('endSessionBtn').disabled = false;
   swDisplay.classList.add('running');
   brandDot.classList.add('pulse');
   document.getElementById('fsHint').textContent = '🟢 집중 모드 실행 중';
   startNotifTimer();
 }
 
-// ── 정지 ───────────────────────────────────────────────────
-function stopTimer() {
-  const sMs       = Date.now() - sessionStart;
-  const startHour = new Date(sessionStart).getHours();
-  sessions    = [...sessions, { ms: sMs, startHour }];
-  totalMs    += sMs;
-  subjectTime[selectedCat] = (subjectTime[selectedCat] || 0) + sMs;
-  elapsed    += Date.now() - startTime;
-  startTime    = null;
-  sessionStart = null;
-
+// ── 일시정지 ───────────────────────────────────────────────
+function pauseTimer() {
+  elapsed += Date.now() - startTime;
+  startTime = null;
   clearInterval(ticker); ticker = null; running = false;
-  lectureMode = false; updateLectureModeBtn(); // 세션 종료 시 인강 모드 자동 해제
-  startStopBtn.textContent = '계속';
+  saveTimerState();
+  startStopBtn.textContent = '▶ 재개';
   startStopBtn.classList.remove('stop');
+  swDisplay.classList.remove('running');
+  brandDot.classList.remove('pulse');
+  document.getElementById('fsHint').textContent = '일시정지됨 — 재개하려면 탭하세요';
+  stopNotifTimer();
+  tick();
+}
+
+// ── 재개 ───────────────────────────────────────────────────
+function resumeTimer() {
+  startTime    = Date.now();
+  if (!sessionStart) sessionStart = Date.now();
+  running      = true;
+  saveTimerState();
+  ticker = setInterval(tick, 30);
+  startStopBtn.textContent = '⏸ 일시정지';
+  startStopBtn.classList.add('stop');
+  document.getElementById('endSessionBtn').disabled = false;
+  swDisplay.classList.add('running');
+  brandDot.classList.add('pulse');
+  document.getElementById('fsHint').textContent = '🟢 집중 모드 실행 중';
+  startNotifTimer();
+}
+
+// ── 세션 종료 (기록 저장 + 리포트) ────────────────────────
+function endSession() {
+  if (running) {
+    const sMs       = Date.now() - sessionStart;
+    const startHour = new Date(sessionStart).getHours();
+    sessions    = [...sessions, { ms: sMs, startHour }];
+    totalMs    += sMs;
+    subjectTime[selectedCat] = (subjectTime[selectedCat] || 0) + sMs;
+    elapsed    += Date.now() - startTime;
+    startTime    = null;
+    sessionStart = null;
+    clearInterval(ticker); ticker = null; running = false;
+  } else {
+    sessionStart = null;
+  }
+
+  lectureMode = false; updateLectureModeBtn();
+  startStopBtn.textContent = '시작';
+  startStopBtn.classList.remove('stop');
+  document.getElementById('endSessionBtn').disabled = true;
   lapBtn.disabled = true;
   swDisplay.classList.remove('running');
   brandDot.classList.remove('pulse');
   document.getElementById('fsHint').textContent = '▶ 시작 시 전체화면으로 전환돼요';
-
   tick(); updateAccumLabel(); saveTimerState();
   renderGoalBars(); updateLiveScore();
   stopNotifTimer();
@@ -369,6 +405,9 @@ function stopTimer() {
     (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
   showReport();
 }
+
+// ── 하위 호환 ───────────────────────────────────────────────
+function stopTimer() { endSession(); }
 
 // ── 초기화 ─────────────────────────────────────────────────
 function resetTimer() {
@@ -390,11 +429,16 @@ function resetTimer() {
     (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
 }
 
-// ── 탭 복귀 시 화면 즉시 갱신 ─────────────────────────────
-// iOS에서 앱으로 돌아오면 tick이 멈춰있으므로 즉시 갱신
+// ── 탭 복귀 / 포커스 복귀 시 처리 ────────────────────────
+// visibilitychange를 하나로 통합 (중복 등록 시 탭 전환이 막힘)
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && startTime !== null) {
-    tick(); updateAccumLabel(); updateLiveScore();
+  if (document.hidden) {
+    // 앱 숨겨짐: 타이머 실행 중이면 오버레이
+    if (running) showOverlay();
+  } else {
+    // 앱 복귀: 오버레이 끄고 화면 갱신
+    if (overlayOn) hideOverlay();
+    if (startTime !== null) { tick(); updateAccumLabel(); updateLiveScore(); }
   }
 });
 
@@ -419,7 +463,16 @@ function renderLaps() {
   });
 }
 
-startStopBtn.addEventListener('click', () => running ? stopTimer() : startTimer());
+startStopBtn.addEventListener('click', () => {
+  if (running) {
+    pauseTimer();
+  } else if (startTime === null && sessionStart === null && elapsed === 0) {
+    startTimer();      // 최초 시작
+  } else {
+    resumeTimer();     // 일시정지 후 재개
+  }
+});
+document.getElementById('endSessionBtn').addEventListener('click', endSession);
 lapBtn.addEventListener('click', addLap);
 document.getElementById('resetBtn').addEventListener('click', resetTimer);
 tick(); updateAccumLabel(); renderGoalBars(); updateLiveScore();
@@ -493,7 +546,7 @@ document.getElementById('focusToastClose').addEventListener('click',()=>document
 function onFSChange(){ const nowFS=!!(document.fullscreenElement||document.webkitFullscreenElement);if(isFS&&!nowFS&&running)showOverlay();if(nowFS)hideOverlay();isFS=nowFS; }
 document.addEventListener('fullscreenchange',onFSChange);
 document.addEventListener('webkitfullscreenchange',onFSChange);
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&running)showOverlay();if(!document.hidden&&overlayOn)hideOverlay();});
+// visibilitychange는 위에서 이미 통합 등록됨 — 중복 제거
 window.addEventListener('blur',()=>{if(running)showFocusToast();});
 
 /* ══════════════════════════════════════════════════════════
@@ -1003,3 +1056,73 @@ const _origTabClick = document.querySelectorAll('.nav-item');
 // stats 탭 진입 시 자동 렌더됨 — 이미 처리됨
 // 초기 렌더 (혹시 stats 탭이 기본이면 실행)
 renderManualList();
+
+/* ══════════════════════════════════════════════════════════
+   수면 기록
+   ══════════════════════════════════════════════════════════ */
+const K_SLEEP = 'sf_sleep';  // {bedTime: ms | null, wakeTime: ms | null}
+
+function getSleep() { return lsGet(K_SLEEP) || { bedTime: null, wakeTime: null }; }
+
+function updateSleepUI() {
+  const { bedTime, wakeTime } = getSleep();
+  const statusEl = document.getElementById('sleepStatus');
+  const infoEl   = document.getElementById('sleepInfo');
+  const btnSleep = document.getElementById('btnSleepNow');
+  const btnWake  = document.getElementById('btnWakeUp');
+  if (!statusEl) return;
+
+  if (!bedTime) {
+    // 아직 취침 전
+    statusEl.textContent = '활동 중';
+    statusEl.className   = 'badge muted';
+    infoEl.textContent   = '';
+    btnSleep.disabled    = false;
+    btnWake.disabled     = true;
+  } else if (bedTime && !wakeTime) {
+    // 취침 중
+    const dur = Date.now() - bedTime;
+    statusEl.textContent = '수면 중 💤';
+    statusEl.className   = 'badge sleep-badge';
+    infoEl.textContent   = `취침 ${new Date(bedTime).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} · ${msToReadable(dur)} 경과`;
+    btnSleep.disabled    = true;
+    btnWake.disabled     = false;
+  } else {
+    // 기상 완료
+    const dur = wakeTime - bedTime;
+    statusEl.textContent = '기상 완료 ☀️';
+    statusEl.className   = 'badge ok-badge';
+    const bed  = new Date(bedTime).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    const wake = new Date(wakeTime).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    infoEl.textContent = `${bed} 취침 → ${wake} 기상 · 수면 ${msToReadable(dur)}`;
+    btnSleep.disabled    = true;
+    btnWake.disabled     = true;
+  }
+}
+
+document.getElementById('btnSleepNow').addEventListener('click', () => {
+  lsSet(K_SLEEP, { bedTime: Date.now(), wakeTime: null });
+  updateSleepUI();
+  showNotif('취침 기록됐어요. 잘 자요! 🌙', '💤');
+});
+
+document.getElementById('btnWakeUp').addEventListener('click', () => {
+  const s = getSleep();
+  lsSet(K_SLEEP, { ...s, wakeTime: Date.now() });
+  updateSleepUI();
+  const dur = Date.now() - s.bedTime;
+  showNotif(`기상! 수면 ${msToReadable(dur)} 기록됐어요 ☀️`, '☀️');
+});
+
+// 날짜가 바뀌면 수면 기록 초기화
+(function checkSleepRollover() {
+  const s = getSleep();
+  if (s.wakeTime) {
+    const wakeDay = new Date(s.wakeTime).toDateString();
+    if (wakeDay !== new Date().toDateString()) lsSet(K_SLEEP, { bedTime: null, wakeTime: null });
+  }
+})();
+
+updateSleepUI();
+// 수면 중일 때 1분마다 경과 시간 업데이트
+setInterval(() => { if (getSleep().bedTime && !getSleep().wakeTime) updateSleepUI(); }, 60000);
