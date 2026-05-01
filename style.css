@@ -588,3 +588,31 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
   color: #ffa94d;
   font-weight: 600;
 }
+
+/* ── 수면 카드 ─────────────────────────────────────────── */
+.sleep-card { gap: 12px; }
+
+.sleep-info {
+  font-size: .82rem; color: var(--text-2); line-height: 1.5;
+  min-height: 18px;
+}
+
+.sleep-btns { display: flex; gap: 10px; }
+
+.btn-sleep {
+  flex: 1; height: 44px; border-radius: var(--r-sm);
+  border: 1.5px solid var(--border);
+  background: var(--bg); color: var(--text-2);
+  font-family: var(--font); font-size: .88rem; font-weight: 500;
+  cursor: pointer; transition: all var(--tr);
+}
+.btn-sleep:hover:not(:disabled) { border-color: #6c63ff; color: #6c63ff; background: rgba(108,99,255,.07); }
+.btn-sleep.wake:hover:not(:disabled) { border-color: #ffa94d; color: #ffa94d; background: rgba(255,169,77,.07); }
+.btn-sleep:disabled { opacity: .4; cursor: not-allowed; }
+
+.sleep-badge { color: #6c63ff !important; background: rgba(108,99,255,.1) !important; }
+.ok-badge    { color: var(--ok) !important; background: var(--ok-s) !important; }
+
+/* endSessionBtn 색상 */
+#endSessionBtn { color: var(--danger); border-color: var(--border); }
+#endSessionBtn:not(:disabled):hover { border-color: var(--danger); background: var(--danger-s); }
