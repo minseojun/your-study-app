@@ -560,3 +560,31 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
   font-size: .65rem; transition: all var(--tr); flex-shrink: 0;
 }
 .manual-item-del:hover { background: var(--danger-s); color: var(--danger); }
+
+/* ── 인강 모드 버튼 ─────────────────────────────────────── */
+.btn-lecture-mode {
+  width: 100%;
+  height: 42px;
+  border-radius: var(--r-sm);
+  border: 1.5px dashed var(--border);
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font);
+  font-size: .86rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--tr);
+  letter-spacing: -.01em;
+}
+.btn-lecture-mode:hover {
+  border-color: #ffa94d;
+  color: #ffa94d;
+  background: rgba(255,169,77,.06);
+}
+.btn-lecture-mode.active {
+  border-style: solid;
+  border-color: #ffa94d;
+  background: rgba(255,169,77,.1);
+  color: #ffa94d;
+  font-weight: 600;
+}
