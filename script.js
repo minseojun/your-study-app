@@ -274,6 +274,23 @@ let sessionStart = lsGet('sf_session_start') || null;
 let sessionElapsedAtStart = lsGet('sf_session_elapsed_at_start');
 if(sessionElapsedAtStart!==null) sessionElapsedAtStart=Number(sessionElapsedAtStart);
 
+/* ── 앱 재시작 시 백그라운드 경과 시간 복원 (iOS 프로세스 강제종료 대응) ──
+   visibilitychange 없이 앱이 재시작될 때 sf_bg_start가 남아있으면 elapsed 보정 */
+(()=>{
+  const bgStart   = lsGet('sf_bg_start');
+  const bgElapsed = lsGet('sf_bg_elapsed');
+  if(bgStart !== null && bgElapsed !== null){
+    if(sessionElapsedAtStart !== null){
+      elapsed = bgElapsed + (Date.now() - bgStart);
+      const _ts = lsGet(K.TIMER_STATE) || {};
+      _ts.elapsed = elapsed;
+      lsSet(K.TIMER_STATE, _ts);
+    }
+    localStorage.removeItem('sf_bg_start');
+    localStorage.removeItem('sf_bg_elapsed');
+  }
+})();
+
 /* ── 인강 모드 ── */
 let lectureMode = false;
 function updateLectureModeBtn(){
