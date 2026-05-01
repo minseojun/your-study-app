@@ -183,6 +183,19 @@
           </div>
         </section>
 
+        <!-- 수면 관리 -->
+        <section class="card sleep-card">
+          <div class="card-header">
+            <h2 class="card-title">💤 수면 관리</h2>
+            <span id="sleepStatus" class="badge muted">활동 중</span>
+          </div>
+          <div id="sleepInfo" class="sleep-info"></div>
+          <div class="sleep-btns">
+            <button id="btnSleepNow" class="btn-sleep">취침</button>
+            <button id="btnWakeUp" class="btn-sleep wake" disabled>기상</button>
+          </div>
+        </section>
+
         <!-- 내일로 미룬 것들 -->
         <section class="card card-tomorrow">
           <div class="card-header">
@@ -231,7 +244,7 @@
 
           <div class="sw-btns">
             <button id="startStopBtn" class="btn-primary">시작</button>
-            <button id="lapBtn" class="btn-secondary" disabled>랩</button>
+            <button id="endSessionBtn" class="btn-secondary" disabled>종료</button>
           </div>
 
           <!-- 인강 모드 -->
