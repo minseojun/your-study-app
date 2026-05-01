@@ -370,8 +370,26 @@ function showOverlay(){
   }
 }
 document.getElementById('overlayBackBtn').addEventListener('click',()=>focusOverlay.classList.remove('show'));
-document.addEventListener('visibilitychange',()=>{ if(document.hidden && running) showOverlay(); });
-
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // 백그라운드 진입: 현재 시각 저장
+    if (running) {
+      lsSet('sf_bg_start', Date.now());
+      lsSet('sf_bg_elapsed', elapsed);
+      showOverlay();
+    }
+  } else {
+    // 포그라운드 복귀: 경과 시간 보정
+    const bgStart = lsGet('sf_bg_start');
+    const bgElapsed = lsGet('sf_bg_elapsed');
+    if (bgStart !== null && bgElapsed !== null && running) {
+      elapsed = bgElapsed + (Date.now() - bgStart);
+      startTime = Date.now(); // 새 기준점으로 리셋
+      localStorage.removeItem('sf_bg_start');
+      localStorage.removeItem('sf_bg_elapsed');
+    }
+  }
+});
 /* ══════════════════════════════════════════════════════════ */
 let weeklyChartInst=null, sleepChartInst=null, subjectChartInst=null;
 
@@ -453,6 +471,69 @@ function renderWeeklyStats(){
   if(weeklyChartInst) weeklyChartInst.destroy();
   weeklyChartInst=new Chart(document.getElementById('weeklyChart'),{type:'bar',data:{labels,datasets:[{data:mins,backgroundColor:'#0071e3',borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
 }
+
+/* ── 수동 공부기록 추가 ── */
+function renderManualAddUI() {
+  const container = document.getElementById('manualAddSection');
+  if (!container) return;
+  container.innerHTML = `
+    <div class="manual-add-form">
+      <div class="goal-input-row">
+        <span class="goal-input-label">날짜</span>
+        <input type="date" id="manualDate" class="goal-input-field" style="width:130px"
+          value="${new Date().toISOString().slice(0,10)}" max="${new Date().toISOString().slice(0,10)}">
+      </div>
+      <div class="goal-input-row">
+        <span class="goal-input-label">과목</span>
+        <select id="manualSubject" class="notif-select" style="height:30px">
+          ${SUBJECTS.map(s=>`<option value="${s}">${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="goal-input-row">
+        <span class="goal-input-label">시간(분)</span>
+        <input type="number" id="manualMins" class="goal-input-field" min="1" max="600" placeholder="30">
+      </div>
+      <div class="goal-edit-footer" style="margin-top:4px">
+        <button id="manualAddBtn" class="btn-goal-save">추가</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('manualAddBtn').addEventListener('click', () => {
+    const dateRaw = document.getElementById('manualDate').value; // "2025-06-01"
+    if (!dateRaw) return;
+    // todayStr() 형식: "2025-06-01" → 그대로 사용
+    const dateKey = dateRaw;
+    const sub = document.getElementById('manualSubject').value;
+    const mins = parseInt(document.getElementById('manualMins').value);
+    if (!mins || mins < 1) { showNotif('시간을 입력해주세요', '⚠️'); return; }
+    const ms = mins * 60000;
+    const history = lsGet(K.HISTORY) || [];
+    const todayKey = todayStr();
+    if (dateKey === todayKey) {
+      // 오늘 날짜 → 현재 세션 subjectTime에 추가
+      subjectTime[sub] = (subjectTime[sub] || 0) + ms;
+      totalMs += ms;
+      elapsed += ms;
+      saveTimerState();
+      updateAccumLabel();
+      renderGoalBars();
+      updateLiveScore();
+    } else {
+      // 과거 날짜 → history에서 해당 날짜 찾아서 추가
+      const idx = history.findIndex(h => h.date === dateKey);
+      if (idx >= 0) {
+        history[idx].subjectTime[sub] = (history[idx].subjectTime[sub] || 0) + ms;
+        history[idx].totalMs += ms;
+      } else {
+        history.push({ date: dateKey, totalMs: ms, subjectTime: { [sub]: ms }, distractions: 0, sessions: [], doneTasks: 0, totalTasks: 0 });
+      }
+      lsSet(K.HISTORY, history.slice(-7));
+    }
+    showNotif(`${sub} ${mins}분 기록 추가됐어요 ✅`, '📝');
+    if (activeTab === 'stats') { renderWeeklyStats(); renderHeatmap(); }
+  });
+}
+renderManualAddUI();
 
 function renderHeatmap(){
   const map=new Array(24).fill(0); getHistoryWithToday().forEach(day=>(day.sessions||[]).forEach(s=>map[s.startHour]+=s.ms));
