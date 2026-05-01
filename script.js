@@ -1,10 +1,5 @@
 /* ============================================================
    StudyFlow v7 — script.js
-   신규:
-     1. 바텀 탭 네비게이션 (오늘/타이머/분석/코치)
-     2. 헤더 실시간 집중 점수 위젯
-     3. 시간대별 집중 히트맵 (세션에 시작시각 기록)
-     4. 주간 리포트 자동 생성 모달
    ============================================================ */
 'use strict';
 
@@ -20,11 +15,11 @@ const K = {
   TODAY_TASKS :'sf_today_tasks',
   TMRW_TASKS  :'sf_tmrw_tasks',
   TODAY_DATE  :'sf_today_date',
-  TIMER_STATE :'sf_timer_state',  // {elapsed,subjectTime,sessions,distractions,totalMs}
-  HISTORY     :'sf_history',      // [{date,totalMs,subjectTime,distractions,doneTasks,totalTasks,sessions}]
+  TIMER_STATE :'sf_timer_state',
+  HISTORY     :'sf_history',
   GOALS       :'sf_goals',
   NIGHT       :'sf_night',
-  LAST_REPORT :'sf_last_report',  // 마지막 주간 리포트 표시 날짜
+  LAST_REPORT :'sf_last_report',
 };
 
 /* ── 유틸 ───────────────────────────────────────────────── */
@@ -36,28 +31,21 @@ const todayStr = () => new Date().toLocaleDateString('ko-KR',{year:'numeric',mon
 const lsGet = k => { try{return JSON.parse(localStorage.getItem(k));}catch{return null;} };
 const lsSet = (k,v) => localStorage.setItem(k,JSON.stringify(v));
 
-/* ── 집중 점수 계산 (로컬) ──────────────────────────────── */
+/* ── 집중 점수 계산 ──────────────────────────────────────── */
 function calcLiveScore(tMs, sess, dist, doneT, totalT, st) {
-  if(tMs===0&&sess.length===0) return null; // 아직 공부 안 했으면 표시 안 함
+  if(tMs===0&&sess.length===0) return null;
   let score = 0;
-  // 시간: 120분=40점
   score += Math.min(40, Math.round(tMs/60000/120*40));
-  // 최장 세션: 45분=20점
   const longest = sess.length ? Math.max(...sess.map(s=>s.ms)) : 0;
   score += Math.min(20, Math.round(longest/60000/45*20));
-  // 완료율: 20점
   if(totalT>0) score += Math.round(doneT/totalT*20);
-  // 과목 균형: 15점
   const cats = Object.keys(st).filter(k=>st[k]>0).length;
   score += Math.round(cats/SUBJECTS.length*15);
-  // 방해: -4점/회
   score -= dist*4;
   return Math.max(0, Math.min(100, score));
 }
 
-/* ══════════════════════════════════════════════════════════
-   날짜 롤오버
-   ══════════════════════════════════════════════════════════ */
+/* ── 날짜 롤오버 ─────────────────────────────────────────── */
 function checkDateRollover() {
   const last=lsGet(K.TODAY_DATE), now=todayStr();
   if(last===now) return;
@@ -68,7 +56,7 @@ function checkDateRollover() {
       date:last, totalMs:pt.totalMs||0,
       subjectTime:pt.subjectTime||{}, distractions:pt.distractions||0,
       doneTasks:prevTasks.filter(t=>t.done).length, totalTasks:prevTasks.length,
-      sessions:pt.sessions||[], // 시간대 히트맵용
+      sessions:pt.sessions||[],
     });
     lsSet(K.HISTORY, history.slice(-7));
     const incompleteTasks=prevTasks.filter(t=>!t.done);
@@ -84,39 +72,29 @@ checkDateRollover();
 const midnight=new Date(); midnight.setHours(24,0,5,0);
 setTimeout(()=>{checkDateRollover();location.reload();}, midnight-new Date());
 
-/* ══════════════════════════════════════════════════════════
-   헤더 초기화
-   ══════════════════════════════════════════════════════════ */
+/* ── 헤더 초기화 ─────────────────────────────────────────── */
 document.getElementById('dateBadge').textContent =
   new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
 const DDAY=getDday();
 document.getElementById('dDayCount').textContent=DDAY;
 document.getElementById('ddayBadge').textContent=`수능 D-${DDAY}`;
 
-/* ══════════════════════════════════════════════════════════
-   바텀 탭 네비게이션
-   ══════════════════════════════════════════════════════════ */
+/* ── 바텀 탭 네비게이션 ──────────────────────────────────── */
 let activeTab = 'today';
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
     const tab = btn.dataset.tab;
     if(tab === activeTab) return;
-    // 패널 전환
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
     document.getElementById(`tab-${tab}`).classList.add('active');
-    // 버튼 활성화
     document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     activeTab = tab;
-    // 탭 진입 시 데이터 렌더
     if(tab==='stats') { renderWeeklyStats(); renderHeatmap(); renderManualList(); }
-    if(tab==='coach') { /* 코치 탭: 버튼 누를 때만 분석 */ }
   });
 });
 
-/* ══════════════════════════════════════════════════════════
-   야간 모드
-   ══════════════════════════════════════════════════════════ */
+/* ── 야간 모드 ───────────────────────────────────────────── */
 const nightToggle=document.getElementById('nightToggle');
 const nightIcon=document.getElementById('nightIcon');
 function setNight(on){
@@ -129,9 +107,7 @@ function setNight(on){
 nightToggle.addEventListener('click',()=>{const on=!document.body.classList.contains('night');setNight(on);lsSet(K.NIGHT,on?'on':'off');});
 setInterval(()=>{if(lsGet(K.NIGHT)===null)setNight(new Date().getHours()>=22);},60000);
 
-/* ══════════════════════════════════════════════════════════
-   과목 칩
-   ══════════════════════════════════════════════════════════ */
+/* ── 과목 칩 ─────────────────────────────────────────────── */
 let selectedCat='국어';
 document.getElementById('categoryChips').addEventListener('click',e=>{
   const chip=e.target.closest('.chip');
@@ -141,9 +117,7 @@ document.getElementById('categoryChips').addEventListener('click',e=>{
   selectedCat=chip.dataset.cat;
 });
 
-/* ══════════════════════════════════════════════════════════
-   할 일 관리
-   ══════════════════════════════════════════════════════════ */
+/* ── 할 일 관리 ──────────────────────────────────────────── */
 let todayTasks=lsGet(K.TODAY_TASKS)||[];
 let tomorrowTasks=lsGet(K.TMRW_TASKS)||[];
 
@@ -206,9 +180,7 @@ document.getElementById('addBtn').addEventListener('click',addTask);
 document.getElementById('taskInput').addEventListener('keydown',e=>{ if(e.key==='Enter')addTask(); });
 renderToday(); renderTomorrow();
 
-/* ══════════════════════════════════════════════════════════
-   목표 시간
-   ══════════════════════════════════════════════════════════ */
+/* ── 목표 시간 ───────────────────────────────────────────── */
 let goals=lsGet(K.GOALS)||{국어:60,영어:60,수학:90,사회문화:45,생활과윤리:45};
 
 function renderGoalBars(){
@@ -235,17 +207,7 @@ document.getElementById('goalEditBtn').addEventListener('click',()=>{ const p=do
 document.getElementById('goalSave').addEventListener('click',()=>{ document.querySelectorAll('.goal-input-field').forEach(i=>{goals[i.dataset.sub]=parseInt(i.value)||0;}); lsSet(K.GOALS,goals); document.getElementById('goalEditPanel').style.display='none'; renderGoalBars(); showNotif('목표가 저장됐어요 ✅',''); });
 document.getElementById('goalCancel').addEventListener('click',()=>{ document.getElementById('goalEditPanel').style.display='none'; });
 
-/* ══════════════════════════════════════════════════════════
-   타이머 — startTime 기반 설계 (백그라운드 완전 복원)
-   ──────────────────────────────────────────────────────────
-   핵심 원칙:
-     • elapsed    = 완료된 세션들의 누적 ms
-     • startTime  = 현재 세션 시작 Unix ms → localStorage 저장
-     • 현재 총 시간 = elapsed + (Date.now() - startTime)
-     • JS가 백그라운드에서 완전히 죽어도 Date.now()는 정확함
-     • setInterval은 화면 표시(tick)에만 사용, 시간 계산과 무관
-   ══════════════════════════════════════════════════════════ */
-
+/* ── 타이머 ──────────────────────────────────────────────── */
 let timerState   = lsGet(K.TIMER_STATE) || {};
 let elapsed      = timerState.elapsed      || 0;
 let sessions     = timerState.sessions     || [];
@@ -258,22 +220,17 @@ if (timerState.selectedCat) selectedCat = timerState.selectedCat;
 
 let ticker = null, running = false, laps = [], lastLap = 0, isFS = false;
 
-// ── 저장 ───────────────────────────────────────────────────
 function saveTimerState() {
   lsSet(K.TIMER_STATE, {
     elapsed, subjectTime, sessions, distractions, totalMs,
-    startTime:    startTime,    // 실행 중이면 값, 정지 중이면 null
-    sessionStart: sessionStart, // 동일
-    selectedCat,
+    startTime, sessionStart, selectedCat,
   });
 }
 
-// ── 현재까지 총 경과 ms ────────────────────────────────────
 function nowMs() {
   return startTime !== null ? elapsed + (Date.now() - startTime) : elapsed;
 }
 
-// ── 화면 표시 전용 ─────────────────────────────────────────
 function tick() {
   const ms = nowMs(), t = Math.floor(ms / 1000);
   document.getElementById('swHours').textContent   = pad2(Math.floor(t / 3600));
@@ -285,7 +242,6 @@ function updateAccumLabel() {
   document.getElementById('swAccum').textContent = totalMs > 0 ? msToReadable(totalMs) : '0분';
 }
 
-// ── 집중 점수 ──────────────────────────────────────────────
 function updateLiveScore() {
   const done  = todayTasks.filter(t => t.done).length;
   const score = calcLiveScore(totalMs, sessions, distractions, done, todayTasks.length, subjectTime);
@@ -295,9 +251,7 @@ function updateLiveScore() {
   el.style.color = score >= 80 ? 'var(--ok)' : score >= 50 ? 'var(--accent)' : 'var(--danger)';
 }
 
-// ── 앱 재시작 시 백그라운드 종료 복원 ──────────────────────
-// startTime이 저장돼 있다 = 타이머 실행 중에 앱이 종료됐었음
-// → 꺼져 있던 동안의 시간을 포함해 세션 완료 처리 후 정지 상태로 복원
+// 백그라운드 종료 복원
 if (startTime !== null && sessionStart !== null) {
   const killedMs  = Date.now() - startTime;
   const startHour = new Date(sessionStart).getHours();
@@ -308,7 +262,6 @@ if (startTime !== null && sessionStart !== null) {
   startTime    = null;
   sessionStart = null;
   saveTimerState();
-  // showNotif는 아래에서 정의되므로 setTimeout으로 지연
   setTimeout(() => showNotif(`자리 비운 동안 ${msToReadable(killedMs)} 기록됐어요 ✅`, '⏱'), 1200);
 }
 
@@ -317,22 +270,16 @@ const lapBtn       = document.getElementById('lapBtn');
 const brandDot     = document.getElementById('brandDot');
 const swDisplay    = document.getElementById('swDisplay');
 
-// ── 시작 ───────────────────────────────────────────────────
 function startTimer() {
   const el = document.documentElement;
   (el.requestFullscreen ? el.requestFullscreen()
     : el.webkitRequestFullscreen ? new Promise(r => { el.webkitRequestFullscreen(); r(); })
     : Promise.resolve()).catch(() => {});
-
   startTime    = Date.now();
   sessionStart = Date.now();
   running      = true;
-
-  // ★ 즉시 저장 — 이 시점부터 앱이 죽어도 startTime으로 복원 가능
   saveTimerState();
-
-  ticker = setInterval(tick, 30);  // 화면 표시용만 — 시간 계산과 무관
-
+  ticker = setInterval(tick, 30);
   startStopBtn.textContent = '⏸ 일시정지';
   startStopBtn.classList.add('stop');
   lapBtn.disabled = false;
@@ -343,7 +290,6 @@ function startTimer() {
   startNotifTimer();
 }
 
-// ── 일시정지 ───────────────────────────────────────────────
 function pauseTimer() {
   elapsed += Date.now() - startTime;
   startTime = null;
@@ -358,7 +304,6 @@ function pauseTimer() {
   tick();
 }
 
-// ── 재개 ───────────────────────────────────────────────────
 function resumeTimer() {
   startTime    = Date.now();
   if (!sessionStart) sessionStart = Date.now();
@@ -374,7 +319,6 @@ function resumeTimer() {
   startNotifTimer();
 }
 
-// ── 세션 종료 (기록 저장 + 리포트) ────────────────────────
 function endSession() {
   if (running) {
     const sMs       = Date.now() - sessionStart;
@@ -389,8 +333,9 @@ function endSession() {
   } else {
     sessionStart = null;
   }
-
-  lectureMode = false; updateLectureModeBtn();
+  // 세션 종료 시 인강 모드 자동 해제
+  lectureMode = false;
+  updateLectureModeBtn();
   startStopBtn.textContent = '시작';
   startStopBtn.classList.remove('stop');
   document.getElementById('endSessionBtn').disabled = true;
@@ -406,15 +351,15 @@ function endSession() {
   showReport();
 }
 
-// ── 하위 호환 ───────────────────────────────────────────────
 function stopTimer() { endSession(); }
 
-// ── 초기화 ─────────────────────────────────────────────────
 function resetTimer() {
   clearInterval(ticker); stopNotifTimer();
   elapsed = 0; startTime = null; sessionStart = null; running = false;
   laps = []; lastLap = 0; sessions = []; totalMs = 0;
   distractions = 0; subjectTime = {}; isFS = false;
+  lectureMode = false;
+  updateLectureModeBtn();
   saveTimerState();
   startStopBtn.textContent = '시작'; startStopBtn.classList.remove('stop');
   lapBtn.disabled = true;
@@ -429,14 +374,10 @@ function resetTimer() {
     (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
 }
 
-// ── 탭 복귀 / 포커스 복귀 시 처리 ────────────────────────
-// visibilitychange를 하나로 통합 (중복 등록 시 탭 전환이 막힘)
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    // 앱 숨겨짐: 타이머 실행 중이면 오버레이
     if (running) showOverlay();
   } else {
-    // 앱 복귀: 오버레이 끄고 화면 갱신
     if (overlayOn) hideOverlay();
     if (startTime !== null) { tick(); updateAccumLabel(); updateLiveScore(); }
   }
@@ -454,8 +395,8 @@ function renderLaps() {
   lh.classList.add('show');
   const mn = Math.min(...laps), mx = Math.max(...laps);
   [...laps].reverse().forEach((t, ri) => {
-    const idx = laps.length - 1 - ri;
-    const li  = document.createElement('li'); li.className = 'lap-item';
+    const idx  = laps.length - 1 - ri;
+    const li   = document.createElement('li'); li.className = 'lap-item';
     if (laps.length >= 2) { if (t === mn) li.classList.add('fastest'); else if (t === mx) li.classList.add('slowest'); }
     const cs = Math.floor((t%1000)/10), ts = Math.floor(t/1000), m = Math.floor(ts/60), s = ts%60;
     li.innerHTML = `<span class="lap-num">랩 ${idx+1}</span><span class="lap-time">${(m>0?pad2(m)+':':'')+pad2(s)+'.'+pad2(cs)}</span>`;
@@ -467,9 +408,9 @@ startStopBtn.addEventListener('click', () => {
   if (running) {
     pauseTimer();
   } else if (startTime === null && sessionStart === null && elapsed === 0) {
-    startTimer();      // 최초 시작
+    startTimer();
   } else {
-    resumeTimer();     // 일시정지 후 재개
+    resumeTimer();
   }
 });
 document.getElementById('endSessionBtn').addEventListener('click', endSession);
@@ -477,9 +418,7 @@ lapBtn.addEventListener('click', addLap);
 document.getElementById('resetBtn').addEventListener('click', resetTimer);
 tick(); updateAccumLabel(); renderGoalBars(); updateLiveScore();
 
-/* ══════════════════════════════════════════════════════════
-   토스트 알림 (인앱 전용 — 공부 알림 UI 제거됨)
-   ══════════════════════════════════════════════════════════ */
+/* ── 토스트 알림 ─────────────────────────────────────────── */
 function showNotif(msg, icon='🔔') {
   const t = document.getElementById('notifToast');
   document.getElementById('notifMsg').textContent  = msg;
@@ -490,14 +429,10 @@ function showNotif(msg, icon='🔔') {
 document.getElementById('notifClose').addEventListener('click', () =>
   document.getElementById('notifToast').classList.remove('show')
 );
-// 타이머 시작/정지에서 호출하는 빈 stub (알림 UI 제거됨)
 function startNotifTimer() {}
 function stopNotifTimer()  {}
 
-/* ══════════════════════════════════════════════════════════
-   인강 모드
-   — 켜져 있는 동안 탭 전환/화면 이탈이 집중 방해로 카운트 안 됨
-   ══════════════════════════════════════════════════════════ */
+/* ── 인강 모드 ───────────────────────────────────────────── */
 let lectureMode = false;
 
 function updateLectureModeBtn() {
@@ -523,35 +458,47 @@ document.getElementById('lectureModeBtn').addEventListener('click', () => {
     lectureMode ? '📺' : '✅'
   );
 });
-   ══════════════════════════════════════════════════════════ */
+
+/* ── 집중 오버레이 ───────────────────────────────────────── */
 const focusOverlay=document.getElementById('focusOverlay');
-let alertLoop=null,toastTimer=null,overlayOn=false;
-function beep(){ try{const ctx=new(window.AudioContext||window.webkitAudioContext)();[[0,880],[.22,1100],[.44,880]].forEach(([d,f])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.value=f;const t=ctx.currentTime+d;g.gain.setValueAtTime(.15,t);g.gain.exponentialRampToValueAtTime(.001,t+.18);o.start(t);o.stop(t+.2);});}catch(_){} }
+let alertLoop=null, toastTimer=null, overlayOn=false;
+
+function beep(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [[0,880],[.22,1100],[.44,880]].forEach(([d,f])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.value=f;
+      const t=ctx.currentTime+d;
+      g.gain.setValueAtTime(.15,t);g.gain.exponentialRampToValueAtTime(.001,t+.18);
+      o.start(t);o.stop(t+.2);
+    });
+  }catch(_){}
+}
+
 function showOverlay(){
   if(overlayOn) return;
-  if(lectureMode) return;   // 인강 모드 중엔 오버레이 안 뜸
+  if(lectureMode) return;
   overlayOn=true; distractions++; saveTimerState();
   focusOverlay.classList.add('show');
   beep(); alertLoop=setInterval(beep,2200);
 }
-function hideOverlay(){ overlayOn=false;focusOverlay.classList.remove('show');clearInterval(alertLoop);alertLoop=null; }
+function hideOverlay(){ overlayOn=false; focusOverlay.classList.remove('show'); clearInterval(alertLoop); alertLoop=null; }
 function showFocusToast(){
-  if(lectureMode) return;   // 인강 모드 중엔 토스트도 안 뜸
+  if(lectureMode) return;
   const t=document.getElementById('focusToast');
   t.classList.add('show');
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),4500);
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),4500);
 }
-document.getElementById('overlayBackBtn').addEventListener('click',()=>{hideOverlay();document.getElementById('focusToast').classList.remove('show');});
+document.getElementById('overlayBackBtn').addEventListener('click',()=>{ hideOverlay(); document.getElementById('focusToast').classList.remove('show'); });
 document.getElementById('focusToastClose').addEventListener('click',()=>document.getElementById('focusToast').classList.remove('show'));
-function onFSChange(){ const nowFS=!!(document.fullscreenElement||document.webkitFullscreenElement);if(isFS&&!nowFS&&running)showOverlay();if(nowFS)hideOverlay();isFS=nowFS; }
+
+function onFSChange(){ const nowFS=!!(document.fullscreenElement||document.webkitFullscreenElement); if(isFS&&!nowFS&&running) showOverlay(); if(nowFS) hideOverlay(); isFS=nowFS; }
 document.addEventListener('fullscreenchange',onFSChange);
 document.addEventListener('webkitfullscreenchange',onFSChange);
-// visibilitychange는 위에서 이미 통합 등록됨 — 중복 제거
-window.addEventListener('blur',()=>{if(running)showFocusToast();});
+window.addEventListener('blur',()=>{ if(running) showFocusToast(); });
 
-/* ══════════════════════════════════════════════════════════
-   주간 통계 차트
-   ══════════════════════════════════════════════════════════ */
+/* ── 주간 통계 차트 ──────────────────────────────────────── */
 let weeklyChartInst=null;
 function getHistoryWithToday(){
   const history=lsGet(K.HISTORY)||[];
@@ -582,20 +529,11 @@ function renderWeeklyStats(){
   });
 }
 
-/* ══════════════════════════════════════════════════════════
-   시간대별 히트맵
-   ── 세션의 startHour를 기록해서 7일치 집계
-   ══════════════════════════════════════════════════════════ */
+/* ── 히트맵 ──────────────────────────────────────────────── */
 function buildHourMap(){
-  // 24시간 배열, 각 칸 = 해당 시간대 총 공부 ms
   const map=new Array(24).fill(0);
   const all=getHistoryWithToday();
-  all.forEach(day=>{
-    (day.sessions||[]).forEach(s=>{
-      const h=s.startHour;
-      if(h!=null&&h>=0&&h<24) map[h]+=s.ms;
-    });
-  });
+  all.forEach(day=>{ (day.sessions||[]).forEach(s=>{ const h=s.startHour; if(h!=null&&h>=0&&h<24) map[h]+=s.ms; }); });
   return map;
 }
 
@@ -603,18 +541,12 @@ function renderHeatmap(){
   const map=buildHourMap();
   const maxVal=Math.max(...map,1);
   const grid=document.getElementById('heatmapGrid'); grid.innerHTML='';
-
-  // 시간 레이블 + 셀 (24개)
   for(let h=0;h<24;h++){
-    const cell=document.createElement('div');
-    cell.className='hm-cell';
+    const cell=document.createElement('div'); cell.className='hm-cell';
     const lvl=map[h]===0?0:map[h]<maxVal*.25?1:map[h]<maxVal*.5?2:map[h]<maxVal*.75?3:4;
-    cell.setAttribute('data-lvl',lvl);
-    cell.title=`${h}시: ${msToReadable(map[h])||'0분'}`;
+    cell.setAttribute('data-lvl',lvl); cell.title=`${h}시: ${msToReadable(map[h])||'0분'}`;
     grid.appendChild(cell);
   }
-
-  // 시간 레이블 행
   let labelRow=document.querySelector('.heatmap-labels');
   if(!labelRow){ labelRow=document.createElement('div'); labelRow.className='heatmap-labels'; grid.parentNode.insertBefore(labelRow,grid); }
   labelRow.innerHTML='';
@@ -622,8 +554,6 @@ function renderHeatmap(){
     const lbl=document.createElement('div'); lbl.className='hm-label'; lbl.textContent=h%3===0?`${h}시`:'';
     labelRow.appendChild(lbl);
   }
-
-  // 최고 집중 시간대
   const bestH=map.indexOf(maxVal);
   const bestEl=document.getElementById('bestHour');
   if(map[bestH]>0){
@@ -633,9 +563,7 @@ function renderHeatmap(){
   }
 }
 
-/* ══════════════════════════════════════════════════════════
-   주간 리포트 모달
-   ══════════════════════════════════════════════════════════ */
+/* ── 주간 리포트 모달 ────────────────────────────────────── */
 document.getElementById('weeklyReportBtn').addEventListener('click',()=>showWeeklyReport());
 document.getElementById('weeklyReportClose').addEventListener('click',()=>document.getElementById('weeklyReportBackdrop').classList.remove('show'));
 document.getElementById('weeklyReportBackdrop').addEventListener('click',e=>{if(e.target===document.getElementById('weeklyReportBackdrop'))document.getElementById('weeklyReportBackdrop').classList.remove('show');});
@@ -648,13 +576,9 @@ function showWeeklyReport(){
   const weekDist=all.reduce((s,d)=>s+d.distractions,0);
   const weekDone=all.reduce((s,d)=>s+d.doneTasks,0);
   const weekTasks=all.reduce((s,d)=>s+d.totalTasks,0);
-
-  // 과목별 합산
   const subTotals={};
   all.forEach(d=>Object.entries(d.subjectTime||{}).forEach(([k,v])=>{subTotals[k]=(subTotals[k]||0)+v;}));
   const subMax=Math.max(...Object.values(subTotals),1);
-
-  // 인사이트 생성
   const topSub=Object.entries(subTotals).sort((a,b)=>b[1]-a[1])[0]?.[0];
   const missingSub=SUBJECTS.filter(s=>!subTotals[s]||subTotals[s]<60000);
   let insight='';
@@ -662,16 +586,10 @@ function showWeeklyReport(){
   else if(missingSub.length>0) insight=`이번 주 <strong>${missingSub[0]}</strong> 공부가 부족했어요. 다음 주에는 ${missingSub[0]}를 먼저 챙겨봐요!`;
   else if(studyDays>=5) insight=`대단해요! 이번 주 ${studyDays}일이나 공부했어요. 수능이 D-${DDAY}일인 만큼 이 페이스 유지해봐요 🔥`;
   else insight=`이번 주 ${studyDays}일 공부했고 ${topSub||''}에 가장 집중했어요. 꾸준함이 실력이 돼요! ✨`;
-
-  // 공부 연속 기록
-  let streak=0, maxStreak=0, curStreak=0;
+  let curStreak=0, maxStreak=0;
   all.forEach(d=>{ if(d.totalMs>0){curStreak++;maxStreak=Math.max(maxStreak,curStreak);}else curStreak=0; });
-  streak=curStreak;
-
-  const body=document.getElementById('weeklyReportBody');
-  body.innerHTML='';
-
-  // 핵심 지표
+  const streak=curStreak;
+  const body=document.getElementById('weeklyReportBody'); body.innerHTML='';
   const statsSection=document.createElement('div'); statsSection.className='weekly-report-section';
   statsSection.innerHTML=`<h3>이번 주 핵심 지표</h3><div class="wr-stat-row">
     <div class="wr-stat"><div class="wr-stat-val">${msToReadable(weekTotal)||'0분'}</div><div class="wr-stat-lbl">총 공부 시간</div></div>
@@ -682,8 +600,6 @@ function showWeeklyReport(){
     <div class="wr-stat"><div class="wr-stat-val">${streak}일 🔥</div><div class="wr-stat-lbl">연속 공부</div></div>
   </div>`;
   body.appendChild(statsSection);
-
-  // 과목별 막대
   if(Object.keys(subTotals).length>0){
     const subSection=document.createElement('div'); subSection.className='weekly-report-section';
     let subHtml='<h3>과목별 시간</h3><div class="wr-subject-bars">';
@@ -697,8 +613,6 @@ function showWeeklyReport(){
     body.appendChild(subSection);
     requestAnimationFrame(()=>requestAnimationFrame(()=>body.querySelectorAll('.wr-sub-fill').forEach(el=>el.style.width=el.dataset.pct+'%')));
   }
-
-  // 7일 공부 여부 캘린더
   const calSection=document.createElement('div'); calSection.className='weekly-report-section';
   let calHtml='<h3>이번 주 달력</h3><div class="wr-streak">';
   all.forEach((d,i)=>{
@@ -710,19 +624,13 @@ function showWeeklyReport(){
   calHtml+='</div>';
   calSection.innerHTML=calHtml;
   body.appendChild(calSection);
-
-  // 인사이트
   const insightEl=document.createElement('div'); insightEl.className='wr-insight';
   insightEl.innerHTML=insight;
   body.appendChild(insightEl);
-
   document.getElementById('weeklyReportBackdrop').classList.add('show');
-
-  // 일요일 밤 자동 팝업 체크
   lsSet(K.LAST_REPORT,todayStr());
 }
 
-// 일요일 밤 21시 이후 자동 주간 리포트
 (function autoWeeklyReport(){
   const now=new Date();
   const lastReport=lsGet(K.LAST_REPORT)||'';
@@ -731,9 +639,7 @@ function showWeeklyReport(){
   }
 })();
 
-/* ══════════════════════════════════════════════════════════
-   공부 리포트 모달
-   ══════════════════════════════════════════════════════════ */
+/* ── 공부 리포트 모달 ────────────────────────────────────── */
 const modalBackdrop=document.getElementById('modalBackdrop');
 let pieChart=null;
 
@@ -749,10 +655,23 @@ function simpleFeedback(st){
 }
 
 function showReport(){
+  // 집중 방해 횟수 수정 UI
+  const rDist = document.getElementById('rDistractions');
+  rDist.innerHTML = `
+    <button class="dist-adj-btn" id="distMinus">−</button>
+    <span id="distCount">${distractions}</span>회
+    <button class="dist-adj-btn" id="distPlus">+</button>
+  `;
+  document.getElementById('distMinus').addEventListener('click', () => {
+    if(distractions > 0){ distractions--; saveTimerState(); document.getElementById('distCount').textContent=distractions; updateLiveScore(); }
+  });
+  document.getElementById('distPlus').addEventListener('click', () => {
+    distractions++; saveTimerState(); document.getElementById('distCount').textContent=distractions; updateLiveScore();
+  });
+
   document.getElementById('rTotalTime').textContent=totalMs>0?msToReadable(totalMs):'0초';
   document.getElementById('rSessions').textContent=`${sessions.length}회`;
   document.getElementById('rLongest').textContent=sessions.length?msToReadable(Math.max(...sessions.map(s=>s.ms))):'—';
-  document.getElementById('rDistractions').textContent=`${distractions}회`;
   const chartData={...subjectTime};
   if(!Object.keys(chartData).length)todayTasks.forEach(t=>{if(t.done)chartData[t.cat||'국어']=(chartData[t.cat||'국어']||0)+60000;});
   const labels=[],data=[],colors=[];
@@ -778,9 +697,7 @@ document.getElementById('modalContinue').addEventListener('click',()=>{modalBack
 document.getElementById('modalReset').addEventListener('click',()=>{modalBackdrop.classList.remove('show');setTimeout(resetTimer,220);});
 modalBackdrop.addEventListener('click',e=>{if(e.target===modalBackdrop)modalBackdrop.classList.remove('show');});
 
-/* ══════════════════════════════════════════════════════════
-   AI 코치 (코치 탭 인라인)
-   ══════════════════════════════════════════════════════════ */
+/* ── AI 코치 ─────────────────────────────────────────────── */
 function collectData(){
   const all=getHistoryWithToday();
   const weekSubjectMs={};let weekTotal=0,weekDist=0,studyDays=0;
@@ -821,7 +738,6 @@ function renderCoachInline(parsed){
   document.getElementById('inlineScoreNum').textContent=`${score}점`;
   document.getElementById('inlineDday').textContent=`D-${getDday()}`;
   document.getElementById('inlineScoreNum').style.color=score>=80?'var(--ok)':score>=50?'var(--accent)':'var(--danger)';
-  // 점수 위젯도 동기화
   document.getElementById('liveScore').textContent=score;
   document.getElementById('liveScore').style.color=score>=80?'var(--ok)':score>=50?'var(--accent)':'var(--danger)';
   const cs=document.getElementById('inlineCoachSections'); cs.innerHTML='';
@@ -857,30 +773,19 @@ async function runCoachAnalysis(){
 
 document.getElementById('coachRunBtn').addEventListener('click',runCoachAnalysis);
 
-/* ══════════════════════════════════════════════════════════
-   수동 공부 기록
-   ──────────────────────────────────────────────────────────
-   • 날짜 / 과목 / 시간(h+m) / 메모 입력
-   • 오늘 날짜면 현재 세션 데이터(subjectTime, totalMs)에 합산
-   • 다른 날짜면 history에서 해당 날짜 항목을 찾아 합산
-   • 기록 목록에서 삭제 가능
-   ══════════════════════════════════════════════════════════ */
+/* ── 수동 공부 기록 ──────────────────────────────────────── */
+const K_MANUAL = 'sf_manual_records';
 
-const K_MANUAL = 'sf_manual_records'; // [{id,date,cat,ms,memo}]
-
-// 날짜 입력 기본값: 오늘
 (function initManualDate() {
   const inp = document.getElementById('manualDate');
-  // YYYY-MM-DD 형식으로 오늘 날짜 설정
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm   = String(now.getMonth() + 1).padStart(2, '0');
   const dd   = String(now.getDate()).padStart(2, '0');
   inp.value = `${yyyy}-${mm}-${dd}`;
-  inp.max   = `${yyyy}-${mm}-${dd}`;   // 미래 날짜 막기
+  inp.max   = `${yyyy}-${mm}-${dd}`;
 })();
 
-// 수동 과목 칩
 let manualCat = '국어';
 document.getElementById('manualChips').addEventListener('click', e => {
   const chip = e.target.closest('.chip');
@@ -890,29 +795,19 @@ document.getElementById('manualChips').addEventListener('click', e => {
   manualCat = chip.dataset.cat;
 });
 
-// 수동 기록 불러오기
 function getManualRecords() { return lsGet(K_MANUAL) || []; }
 function saveManualRecords(arr) { lsSet(K_MANUAL, arr); }
 
-// 분석 탭 진입 시 렌더
 function renderManualList() {
   const list = document.getElementById('manualList');
   if (!list) return;
   const records = getManualRecords();
   list.innerHTML = '';
   if (!records.length) return;
-
-  // 최신순 정렬
   [...records].reverse().forEach(rec => {
     const item = document.createElement('div');
     item.className = 'manual-item';
-
-    const timeStr = (() => {
-      const t = Math.floor(rec.ms / 60000);
-      const h = Math.floor(t / 60), m = t % 60;
-      return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
-    })();
-
+    const timeStr = (() => { const t=Math.floor(rec.ms/60000),h=Math.floor(t/60),m=t%60; return h>0?`${h}시간 ${m}분`:`${m}분`; })();
     item.innerHTML = `
       <span class="manual-item-dot cat-${rec.cat}" style="background:${SUBJECT_COLORS[rec.cat]||'#aaa'}"></span>
       <div class="manual-item-info">
@@ -922,57 +817,28 @@ function renderManualList() {
       <span class="manual-item-time">${timeStr}</span>
       <button class="manual-item-del" data-id="${rec.id}" title="삭제">✕</button>
     `;
-
-    item.querySelector('.manual-item-del').addEventListener('click', () => {
-      deleteManualRecord(rec.id);
-    });
-
+    item.querySelector('.manual-item-del').addEventListener('click', () => { deleteManualRecord(rec.id); });
     list.appendChild(item);
   });
 }
 
-// 저장 버튼
 document.getElementById('manualSaveBtn').addEventListener('click', () => {
   const dateVal  = document.getElementById('manualDate').value;
   const hours    = parseInt(document.getElementById('manualHours').value) || 0;
   const mins     = parseInt(document.getElementById('manualMins').value)  || 0;
   const memo     = document.getElementById('manualMemo').value.trim();
   const totalMin = hours * 60 + mins;
-
   if (!dateVal)       { showNotif('날짜를 선택해주세요', '⚠️'); return; }
   if (totalMin <= 0)  { showNotif('시간을 1분 이상 입력해주세요', '⚠️'); return; }
   if (totalMin > 720) { showNotif('한 번에 최대 12시간까지 입력할 수 있어요', '⚠️'); return; }
-
   const ms  = totalMin * 60 * 1000;
-  const rec = {
-    id   : Date.now().toString(),
-    date : dateVal,
-    cat  : manualCat,
-    ms,
-    memo : memo || manualCat,
-  };
-
-  // 기록 저장
-  const records = getManualRecords();
-  records.push(rec);
-  saveManualRecords(records);
-
-  // 오늘 날짜면 현재 세션 데이터에 합산
-  const today = (() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  })();
-
+  const rec = { id: Date.now().toString(), date: dateVal, cat: manualCat, ms, memo: memo || manualCat };
+  const records = getManualRecords(); records.push(rec); saveManualRecords(records);
+  const today = (() => { const now=new Date(); return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`; })();
   if (dateVal === today) {
-    totalMs   += ms;
-    subjectTime[manualCat] = (subjectTime[manualCat] || 0) + ms;
-    saveTimerState();
-    updateAccumLabel();
-    updateLiveScore();
-    renderGoalBars();
-    renderWeeklyStats();
+    totalMs += ms; subjectTime[manualCat] = (subjectTime[manualCat] || 0) + ms;
+    saveTimerState(); updateAccumLabel(); updateLiveScore(); renderGoalBars(); renderWeeklyStats();
   } else {
-    // 다른 날짜면 history에서 해당 날짜를 찾아 합산
     const history = lsGet(K.HISTORY) || [];
     const entry   = history.find(d => d.date === dateVal);
     if (entry) {
@@ -981,59 +847,28 @@ document.getElementById('manualSaveBtn').addEventListener('click', () => {
       entry.subjectTime[manualCat] = (entry.subjectTime[manualCat] || 0) + ms;
       lsSet(K.HISTORY, history);
     } else {
-      // history에 없는 날짜면 새 항목 추가
-      history.push({
-        date        : dateVal,
-        totalMs     : ms,
-        subjectTime : { [manualCat]: ms },
-        distractions: 0,
-        doneTasks   : 0,
-        totalTasks  : 0,
-        sessions    : [],
-      });
-      lsSet(K.HISTORY, history.slice(-14)); // 최근 14일
+      history.push({ date: dateVal, totalMs: ms, subjectTime: { [manualCat]: ms }, distractions: 0, doneTasks: 0, totalTasks: 0, sessions: [] });
+      lsSet(K.HISTORY, history.slice(-14));
     }
   }
-
-  // 입력 초기화
   document.getElementById('manualHours').value = '0';
   document.getElementById('manualMins').value  = '30';
   document.getElementById('manualMemo').value  = '';
-
-  renderManualList();
-  renderWeeklyStats();
-  renderHeatmap();
-  showNotif(`${timeStr(ms)} 기록됐어요 ✅`, '📝');
-
-  function timeStr(ms) {
-    const t = Math.floor(ms/60000), h = Math.floor(t/60), m = t%60;
-    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
-  }
+  renderManualList(); renderWeeklyStats(); renderHeatmap();
+  const t=Math.floor(ms/60000),h=Math.floor(t/60),m=t%60;
+  showNotif(`${h>0?h+'시간 '+m+'분':m+'분'} 기록됐어요 ✅`, '📝');
 });
 
-// 삭제
 function deleteManualRecord(id) {
   const records = getManualRecords();
   const rec = records.find(r => r.id === id);
   if (!rec) return;
-
-  // 데이터에서 제거
-  const newRecords = records.filter(r => r.id !== id);
-  saveManualRecords(newRecords);
-
-  // 오늘 것이면 현재 세션에서 차감
-  const today = (() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  })();
-
+  saveManualRecords(records.filter(r => r.id !== id));
+  const today = (() => { const now=new Date(); return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`; })();
   if (rec.date === today) {
-    totalMs   = Math.max(0, totalMs - rec.ms);
+    totalMs = Math.max(0, totalMs - rec.ms);
     subjectTime[rec.cat] = Math.max(0, (subjectTime[rec.cat] || 0) - rec.ms);
-    saveTimerState();
-    updateAccumLabel();
-    updateLiveScore();
-    renderGoalBars();
+    saveTimerState(); updateAccumLabel(); updateLiveScore(); renderGoalBars();
   } else {
     const history = lsGet(K.HISTORY) || [];
     const entry   = history.find(d => d.date === rec.date);
@@ -1043,24 +878,14 @@ function deleteManualRecord(id) {
       lsSet(K.HISTORY, history);
     }
   }
-
-  renderManualList();
-  renderWeeklyStats();
-  renderHeatmap();
+  renderManualList(); renderWeeklyStats(); renderHeatmap();
   showNotif('기록이 삭제됐어요', '🗑️');
 }
 
-// 분석 탭 진입 시 렌더 (기존 탭 전환 이벤트에 추가)
-const _origTabClick = document.querySelectorAll('.nav-item');
-// renderManualList는 renderWeeklyStats 안에서도 호출되므로
-// stats 탭 진입 시 자동 렌더됨 — 이미 처리됨
-// 초기 렌더 (혹시 stats 탭이 기본이면 실행)
 renderManualList();
 
-/* ══════════════════════════════════════════════════════════
-   수면 기록
-   ══════════════════════════════════════════════════════════ */
-const K_SLEEP = 'sf_sleep';  // {bedTime: ms | null, wakeTime: ms | null}
+/* ── 수면 기록 ───────────────────────────────────────────── */
+const K_SLEEP = 'sf_sleep';
 
 function getSleep() { return lsGet(K_SLEEP) || { bedTime: null, wakeTime: null }; }
 
@@ -1071,32 +896,21 @@ function updateSleepUI() {
   const btnSleep = document.getElementById('btnSleepNow');
   const btnWake  = document.getElementById('btnWakeUp');
   if (!statusEl) return;
-
   if (!bedTime) {
-    // 아직 취침 전
-    statusEl.textContent = '활동 중';
-    statusEl.className   = 'badge muted';
-    infoEl.textContent   = '';
-    btnSleep.disabled    = false;
-    btnWake.disabled     = true;
+    statusEl.textContent = '활동 중'; statusEl.className = 'badge muted';
+    infoEl.textContent = ''; btnSleep.disabled = false; btnWake.disabled = true;
   } else if (bedTime && !wakeTime) {
-    // 취침 중
     const dur = Date.now() - bedTime;
-    statusEl.textContent = '수면 중 💤';
-    statusEl.className   = 'badge sleep-badge';
-    infoEl.textContent   = `취침 ${new Date(bedTime).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} · ${msToReadable(dur)} 경과`;
-    btnSleep.disabled    = true;
-    btnWake.disabled     = false;
+    statusEl.textContent = '수면 중 💤'; statusEl.className = 'badge sleep-badge';
+    infoEl.textContent = `취침 ${new Date(bedTime).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} · ${msToReadable(dur)} 경과`;
+    btnSleep.disabled = true; btnWake.disabled = false;
   } else {
-    // 기상 완료
     const dur = wakeTime - bedTime;
-    statusEl.textContent = '기상 완료 ☀️';
-    statusEl.className   = 'badge ok-badge';
+    statusEl.textContent = '기상 완료 ☀️'; statusEl.className = 'badge ok-badge';
     const bed  = new Date(bedTime).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
     const wake = new Date(wakeTime).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
     infoEl.textContent = `${bed} 취침 → ${wake} 기상 · 수면 ${msToReadable(dur)}`;
-    btnSleep.disabled    = true;
-    btnWake.disabled     = true;
+    btnSleep.disabled = true; btnWake.disabled = true;
   }
 }
 
@@ -1114,7 +928,6 @@ document.getElementById('btnWakeUp').addEventListener('click', () => {
   showNotif(`기상! 수면 ${msToReadable(dur)} 기록됐어요 ☀️`, '☀️');
 });
 
-// 날짜가 바뀌면 수면 기록 초기화
 (function checkSleepRollover() {
   const s = getSleep();
   if (s.wakeTime) {
@@ -1124,5 +937,5 @@ document.getElementById('btnWakeUp').addEventListener('click', () => {
 })();
 
 updateSleepUI();
-// 수면 중일 때 1분마다 경과 시간 업데이트
+updateLectureModeBtn();
 setInterval(() => { if (getSleep().bedTime && !getSleep().wakeTime) updateSleepUI(); }, 60000);
