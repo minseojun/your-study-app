@@ -762,16 +762,15 @@ function collectData(){
   };
 }
 function buildPrompt(d){
-  const subStatus=Object.entries(d.goalMin).map(([k,v])=>`${k}:실제${d.weekSubjectMin[k]||0}분(목표${v}분)`).join(', ');
-  return `당신은 대한민국 수능 고3 수험생의 AI 학습 전략가입니다.
-[데이터] D-${d.dday} / 오늘${d.todayMin}분 / 할일${d.doneTasks}/${d.totalTasks} / 방해${d.distractions}회 / 평균수면${d.avgSleepMin}분
-[주간 과목 현황] ${subStatus}
+  const subStatus=Object.entries(d.goalMin).map(([k,v])=>`${k}:${d.weekSubjectMin[k]||0}/${v}분`).join(', ');
+  return `수능 고3 AI 학습 전략가. 아래 데이터 분석 후 JSON만 반환. { 로 시작 } 로 끝낼 것. 설명 절대 금지.
 
-지침:
-1. '취약 과목 탐지': 주간 목표 대비 달성률이 가장 낮은 과목을 찾아 분석하고 대책을 줄 것.
-2. '수면 및 컨디션': 수면 데이터 기반으로 학습 효율 조언.
-3. 이모지 사용 금지. 모든 텍스트는 한글 또는 숫자만 사용할 것.
-4. JSON만 반환: {"score":숫자, "sections":[{"icon":"","title":"취약 과목 탐지","body":"..."},{"icon":"","title":"수면 분석","body":"..."},{"icon":"","title":"내일의 미션","body":"..."}], "mission":"..."}`;
+데이터: D-${d.dday}, 오늘${d.todayMin}분, 할일${d.doneTasks}/${d.totalTasks}, 방해${d.distractions}회, 평균수면${d.avgSleepMin}분
+주간과목(실제/목표): ${subStatus}
+
+규칙: 이모지금지, 한글+숫자만, 각 body 2문장이내, mission 1문장이내.
+
+{"score":숫자(0-100),"sections":[{"icon":"","title":"취약과목","body":"2문장이내"},{"icon":"","title":"수면분석","body":"2문장이내"},{"icon":"","title":"내일미션","body":"2문장이내"}],"mission":"1문장"}`;
 }
 function renderCoachInline(parsed){
   document.getElementById('inlineScoreNum').textContent = `${parsed.score}점`;
