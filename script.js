@@ -178,22 +178,37 @@ function renderToday(){
   if(total>0){ document.getElementById('doneCount').textContent=done; document.getElementById('totalCount').textContent=total; document.getElementById('progressFill').style.width=Math.round(done/total*100)+'%'; }
 }
 function renderTomorrow(){
-  const tl=document.getElementById('tomorrowList'); tl.innerHTML='';
-  tomorrowTasks.forEach((t,i)=>tl.appendChild(buildItem(t,i,true)));
-  document.getElementById('tomorrowEmpty').style.display=tomorrowTasks.length===0?'flex':'none';
-  document.getElementById('tomorrowCount').textContent=`${tomorrowTasks.length}개`;
+  // 내일로 미룬 것들 카드 제거됨 — 호환성 유지용 빈 함수
 }
-function postponeTask(idx){ const t=todayTasks.splice(idx,1)[0]; tomorrowTasks.push({text:t.text,cat:t.cat,done:false}); lsSet(K.TODAY_TASKS,todayTasks); lsSet(K.TMRW_TASKS,tomorrowTasks); renderToday(); renderTomorrow(); }
+function postponeTask(idx){
+  const t=todayTasks.splice(idx,1)[0];
+  // tomorrowTasks에 저장 (날짜 이월용)
+  tomorrowTasks.push({text:t.text,cat:t.cat,done:false});
+  lsSet(K.TODAY_TASKS,todayTasks); lsSet(K.TMRW_TASKS,tomorrowTasks);
+  // calTasks의 내일 날짜에도 저장 (캘린더 패널용)
+  const tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const tmrwStr=dateStrOf(tomorrow);
+  const tmrwTasks=getTasksForDate(tmrwStr);
+  // 이미 있으면 중복 추가 방지
+  if(!tmrwTasks.find(x=>x.text===t.text&&x.cat===t.cat)){
+    tmrwTasks.push({text:t.text,cat:t.cat,done:false});
+    saveCalTask(tmrwStr,tmrwTasks);
+  }
+  renderDayPanel(); renderCalendar();
+}
 function addTask(){
   const text=document.getElementById('taskInput').value.trim();
   if(!text){ const inp=document.getElementById('taskInput'); inp.classList.add('shake'); inp.addEventListener('animationend',()=>inp.classList.remove('shake'),{once:true}); return; }
   const isToday=calSelectedDate===todayStr();
   if(isToday){
-    todayTasks.push({text,cat:selectedCat,done:false}); lsSet(K.TODAY_TASKS,todayTasks);
+    todayTasks.push({text,cat:selectedCat,done:false});
+    lsSet(K.TODAY_TASKS,todayTasks);
   } else {
-    const tasks=getTasksForDate(calSelectedDate);
-    tasks.push({text,cat:selectedCat,done:false});
-    saveCalTask(calSelectedDate,tasks);
+    // calTasks의 non-habit 항목에만 추가
+    const saved=calTasks[calSelectedDate]||[];
+    saved.push({text,cat:selectedCat,done:false});
+    calTasks[calSelectedDate]=saved;
+    lsSet(K.CAL_TASKS,calTasks);
   }
   document.getElementById('taskInput').value='';
   renderDayPanel(); renderCalendar();
@@ -271,7 +286,7 @@ function renderCalendar(){
   });
 }
 
-/* 선택 날짜 패널 */
+/* 선택 날짜 패널 — 오늘/다른 날 모두 getTasksForDate 기반으로 통일 */
 function renderDayPanel(){
   const ds=calSelectedDate;
   const isToday=ds===todayStr();
@@ -279,56 +294,114 @@ function renderDayPanel(){
   const dateLabel=`${d.getMonth()+1}월 ${d.getDate()}일 (${DAYS_KO[d.getDay()]})${isToday?' · 오늘':''}`;
   const el=document.getElementById('dayPanelDate');
   if(el) el.textContent=dateLabel;
+  const inp=document.getElementById('taskInput');
+  if(inp) inp.placeholder=isToday?'할 일 추가':`${d.getMonth()+1}/${d.getDate()} 할 일 추가`;
 
+  // 오늘은 todayTasks + 습관, 다른 날은 calTasks + 습관 모두 합쳐서 렌더
+  let tasks;
   if(isToday){
-    // 오늘: 기존 todayTasks 사용
-    renderToday();
-  } else {
-    // 다른 날짜: calTasks에서 렌더
-    const tasks=getTasksForDate(ds);
-    const tl=document.getElementById('taskList'); if(!tl)return;
-    tl.innerHTML='';
-    tasks.forEach((t,i)=>{
-      tl.appendChild(buildCalItem(t,i,ds));
+    // 오늘의 습관(해당 요일)을 todayTasks에 없는 것만 추가해서 표시
+    const dow=d.getDay();
+    const habitTasks=habits.filter(h=>h.days.includes(dow)).map(h=>{
+      // todayTasks에 이미 같은 habitId가 있으면 그걸 쓰고, 없으면 새로 생성
+      const existing=todayTasks.find(t=>t.habitId===h.id);
+      return existing || {text:h.text,cat:h.cat,done:false,habitId:h.id,_virtual:true};
     });
-    const total=tasks.length, done=tasks.filter(t=>t.done).length;
-    document.getElementById('emptyState').style.display=total===0?'flex':'none';
-    document.getElementById('taskCount').textContent=`${total}개`;
-    document.getElementById('progressRow').style.display=total===0?'none':'flex';
-    if(total>0){
-      document.getElementById('doneCount').textContent=done;
-      document.getElementById('totalCount').textContent=total;
-      document.getElementById('progressFill').style.width=Math.round(done/total*100)+'%';
-    }
-    // 다른 날짜 입력란 — addBtn 동작 교체
-    const inp=document.getElementById('taskInput');
-    if(inp) inp.placeholder=`${dateLabel} 할 일 추가`;
+    // todayTasks 중 habitId 없는 것 + 위에서 만든 habitTasks 합치기
+    tasks=[...habitTasks, ...todayTasks.filter(t=>!t.habitId)];
+  } else {
+    tasks=getTasksForDate(ds);
+  }
+
+  const tl=document.getElementById('taskList'); if(!tl)return;
+  tl.innerHTML='';
+  tasks.forEach((t,i)=>{
+    tl.appendChild(buildDayItem(t,i,ds,isToday));
+  });
+  const total=tasks.length, done=tasks.filter(t=>t.done).length;
+  document.getElementById('emptyState').style.display=total===0?'flex':'none';
+  document.getElementById('taskCount').textContent=`${total}개`;
+  document.getElementById('progressRow').style.display=total===0?'none':'flex';
+  if(total>0){
+    document.getElementById('doneCount').textContent=done;
+    document.getElementById('totalCount').textContent=total;
+    document.getElementById('progressFill').style.width=Math.round(done/total*100)+'%';
   }
 }
 
-function buildCalItem(task,idx,dateStr){
+function buildDayItem(task,idx,dateStr,isToday){
   const li=document.createElement('li');
-  li.className='task-item'+(task.done?' done':'');
+  li.className='task-item'+(task.done?' done':'')+(task.habitId?' habit-task':'');
   const cb=document.createElement('input'); cb.type='checkbox'; cb.className='task-cb'; cb.checked=task.done;
   cb.addEventListener('change',()=>{
-    const tasks=getTasksForDate(dateStr);
-    tasks[idx].done=!tasks[idx].done;
-    saveCalTask(dateStr,tasks); renderDayPanel(); renderCalendar();
+    if(isToday){
+      if(task.habitId){
+        // 가상 habitTask면 todayTasks에 실체화
+        const existing=todayTasks.findIndex(t=>t.habitId===task.habitId);
+        if(existing>=0){ todayTasks[existing].done=!todayTasks[existing].done; }
+        else { todayTasks.push({...task,done:!task.done,_virtual:undefined}); }
+        lsSet(K.TODAY_TASKS,todayTasks);
+      } else {
+        todayTasks[todayTasks.findIndex(t=>t===task||t.text===task.text)].done=!task.done;
+        lsSet(K.TODAY_TASKS,todayTasks);
+      }
+    } else {
+      // calTasks에 완료 상태 저장
+      const saved=calTasks[dateStr]||[];
+      if(task.habitId){
+        const hi=saved.findIndex(m=>m.habitId===task.habitId);
+        if(hi>=0) saved[hi].done=!saved[hi].done;
+        else saved.push({...task,done:!task.done});
+      } else {
+        // non-habit: idx 기준으로 찾기 (habitTasks 제외한 nonHabit 인덱스)
+        const nonHabitSaved=saved.filter(m=>!m.habitId);
+        const dow=new Date(dateStr).getDay();
+        const habitCount=habits.filter(h=>h.days.includes(dow)).length;
+        const nonHabitIdx=idx-habitCount;
+        if(nonHabitIdx>=0&&nonHabitSaved[nonHabitIdx]) nonHabitSaved[nonHabitIdx].done=!task.done;
+        // 전체 calTasks 재구성
+        const habitSaved=saved.filter(m=>m.habitId);
+        calTasks[dateStr]=[...habitSaved,...nonHabitSaved];
+      }
+      lsSet(K.CAL_TASKS,calTasks);
+    }
+    renderDayPanel(); renderCalendar();
   });
   li.appendChild(cb);
+  if(task.habitId){
+    const icon=document.createElement('span'); icon.className='habit-task-icon'; icon.textContent='🔁'; li.appendChild(icon);
+  }
   const dot=document.createElement('span'); dot.className=`cat-dot cat-${task.cat||'국어'}`; li.appendChild(dot);
   const txt=document.createElement('span'); txt.className='task-text'; txt.textContent=task.text; li.appendChild(txt);
   const badge=document.createElement('span'); badge.className='cat-badge'; badge.textContent=task.cat||'국어'; li.appendChild(badge);
   const acts=document.createElement('div'); acts.className='task-actions';
-  const db=document.createElement('button'); db.className='del'; db.title='삭제'; db.innerHTML=S_DEL;
-  db.addEventListener('click',()=>{
-    const tasks=getTasksForDate(dateStr);
-    if(!tasks[idx].habitId) tasks.splice(idx,1);
-    saveCalTask(dateStr,tasks); renderDayPanel(); renderCalendar();
-  });
-  acts.appendChild(db); li.appendChild(acts);
+  if(!task.habitId){
+    // 습관 항목은 삭제 불가 (습관 관리에서 삭제)
+    const db=document.createElement('button'); db.className='del'; db.title='삭제'; db.innerHTML=S_DEL;
+    db.addEventListener('click',()=>{
+      if(isToday){
+        const fi=todayTasks.indexOf(task);
+        if(fi>=0){ todayTasks.splice(fi,1); lsSet(K.TODAY_TASKS,todayTasks); }
+      } else {
+        const saved=calTasks[dateStr]||[];
+        const ni=saved.filter(m=>!m.habitId).indexOf(task);
+        if(ni>=0){ saved.filter(m=>!m.habitId).splice(ni,1); lsSet(K.CAL_TASKS,calTasks); }
+      }
+      renderDayPanel(); renderCalendar();
+    });
+    acts.appendChild(db);
+  }
+  if(isToday&&!task.habitId){
+    const pb=document.createElement('button'); pb.className='postpone'; pb.title='내일로 미루기'; pb.innerHTML=S_POST;
+    const taskIdx=todayTasks.indexOf(task);
+    pb.addEventListener('click',()=>postponeTask(taskIdx>=0?taskIdx:idx));
+    acts.appendChild(pb);
+  }
+  li.appendChild(acts);
   return li;
 }
+// 이전 buildCalItem 호환용
+function buildCalItem(task,idx,dateStr){ return buildDayItem(task,idx,dateStr,dateStr===todayStr()); }
 
 function openCalAddModal(dateStr){
   const bd=document.getElementById('calAddModalBackdrop');
@@ -387,15 +460,22 @@ document.getElementById('habitAddBtn')?.addEventListener('click',()=>{
   document.querySelectorAll('.habit-day-btn').forEach(b=>b.classList.remove('active'));
   renderHabits(); renderCalendar(); renderDayPanel();
   showNotif(`"${text}" 습관 등록됐어요`,'🔁');
+  // 폼 닫기
+  const form=document.getElementById('habitAddForm');
+  const btn=document.getElementById('habitAddToggleBtn');
+  if(form){form.style.display='none';}
+  if(btn){btn.textContent='+ 추가';}
 });
 document.querySelectorAll('.habit-day-btn').forEach(btn=>btn.addEventListener('click',()=>btn.classList.toggle('active')));
 document.getElementById('habitCatChips')?.addEventListener('click',e=>{ const chip=e.target.closest('.chip'); if(!chip)return; document.querySelectorAll('#habitCatChips .chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); });
 
-/* 습관 패널 토글 */
-document.getElementById('habitToggleBtn')?.addEventListener('click',()=>{
-  const panel=document.getElementById('habitPanel'), btn=document.getElementById('habitToggleBtn');
-  const open=!panel.style.display||panel.style.display==='none';
-  panel.style.display=open?'block':'none'; btn.classList.toggle('open',open);
+/* 습관 추가 폼 토글 */
+document.getElementById('habitAddToggleBtn')?.addEventListener('click',()=>{
+  const form=document.getElementById('habitAddForm');
+  const btn=document.getElementById('habitAddToggleBtn');
+  const open=!form.style.display||form.style.display==='none';
+  form.style.display=open?'flex':'none';
+  btn.textContent=open?'닫기':'+ 추가';
 });
 
 /* ══════════════════════════════════════════════════════════
@@ -639,9 +719,12 @@ document.getElementById('mockResetBtn')?.addEventListener('click',()=>{
 });
 document.getElementById('mockTimerToggle')?.addEventListener('click',()=>{
   const wrap=document.getElementById('mockTimerWrap'); if(!wrap)return;
-  const open=!wrap.style.display||wrap.style.display==='none';
-  wrap.style.display=open?'block':'none';
-  document.getElementById('mockTimerToggle').classList.toggle('open',open);
+  const outer=document.getElementById('mockOuterWrap');
+  const btn=document.getElementById('mockTimerToggle');
+  const isOpen=!wrap.style.display||wrap.style.display==='none';
+  wrap.style.display=isOpen?'block':'none';
+  btn.classList.toggle('open',isOpen);
+  if(outer) outer.classList.toggle('open',isOpen);
 });
 
 /* ══════════════════════════════════════════════════════════
