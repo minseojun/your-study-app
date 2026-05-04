@@ -463,19 +463,23 @@ document.getElementById('habitAddBtn')?.addEventListener('click',()=>{
   // 폼 닫기
   const form=document.getElementById('habitAddForm');
   const btn=document.getElementById('habitAddToggleBtn');
-  if(form){form.style.display='none';}
-  if(btn){btn.textContent='+ 추가';}
+  const outer=document.getElementById('habitOuterWrap');
+  if(form) form.style.display='none';
+  if(btn)  btn.classList.remove('open');
+  if(outer) outer.classList.remove('open');
 });
 document.querySelectorAll('.habit-day-btn').forEach(btn=>btn.addEventListener('click',()=>btn.classList.toggle('active')));
 document.getElementById('habitCatChips')?.addEventListener('click',e=>{ const chip=e.target.closest('.chip'); if(!chip)return; document.querySelectorAll('#habitCatChips .chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); });
 
-/* 습관 추가 폼 토글 */
+/* 반복 습관 패널 토글 */
 document.getElementById('habitAddToggleBtn')?.addEventListener('click',()=>{
-  const form=document.getElementById('habitAddForm');
-  const btn=document.getElementById('habitAddToggleBtn');
-  const open=!form.style.display||form.style.display==='none';
-  form.style.display=open?'flex':'none';
-  btn.textContent=open?'닫기':'+ 추가';
+  const form  = document.getElementById('habitAddForm');
+  const btn   = document.getElementById('habitAddToggleBtn');
+  const outer = document.getElementById('habitOuterWrap');
+  const isOpen = !form.style.display || form.style.display==='none';
+  form.style.display = isOpen ? 'flex' : 'none';
+  btn.classList.toggle('open', isOpen);
+  if(outer) outer.classList.toggle('open', isOpen);
 });
 
 /* ══════════════════════════════════════════════════════════
