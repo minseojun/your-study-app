@@ -51,19 +51,6 @@ function showNotif(msg, icon='🔔'){
   setTimeout(()=>t.classList.remove('show'), 5000);
 }
 
-/* ── 집중 오버레이 ── */
-const focusOverlay = document.getElementById('focusOverlay');
-
-function showOverlay(){
-  if(running && !lectureMode){
-    distractions++;
-    saveTimerState();
-    focusOverlay.classList.add('show');
-    updateLiveScore();
-  }
-}
-document.getElementById('overlayBackBtn').addEventListener('click', ()=>focusOverlay.classList.remove('show'));
-
 /* ── 알림 타이머 (공부알림 토글 있을 경우 대비) ── */
 function startNotifTimer(){
   const toggle   = document.getElementById('notifToggle');
