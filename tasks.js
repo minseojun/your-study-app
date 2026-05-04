@@ -127,9 +127,3 @@ if(_timerChips) _timerChips.addEventListener('click', e=>{
   const chip=e.target.closest('.chip'); if(!chip||chip.disabled) return;
   syncSubjectChipsAndSave(chip.dataset.cat);
 });
-
-// capture로 등록해서 다른 리스너보다 먼저 저장
-document.getElementById('timerCategoryChips').addEventListener('click', e=>{
-  const chip=e.target.closest('.chip'); if(!chip||chip.disabled) return;
-  lsSet('sf_last_subject', chip.dataset.cat);
-}, true);
