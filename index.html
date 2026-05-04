@@ -172,14 +172,14 @@
             </div>
           </div>
 
-          <!-- 반복 습관 — 인라인, 탭 없음 -->
-          <div class="habit-section-inline">
-            <div class="habit-inline-header">
-              <span class="habit-inline-title">🔁 반복 습관</span>
-              <button class="btn-goal-edit" id="habitAddToggleBtn">+ 추가</button>
-            </div>
-            <div id="habitList"></div>
-            <div id="habitAddForm" class="habit-add-form" style="display:none">
+          <!-- 반복 습관 — 접기/펴기 -->
+          <div class="manual-inline-wrap" id="habitOuterWrap">
+            <button class="manual-inline-toggle" id="habitAddToggleBtn">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              반복 습관 관리
+            </button>
+            <div id="habitAddForm" class="manual-inline-panel habit-add-form" style="display:none">
+              <div id="habitList"></div>
               <input type="text" id="habitInput" class="manual-field-input" placeholder="습관 이름 (예: 수학 인강)" maxlength="30" autocomplete="off"/>
               <div class="chip-row" style="padding:0">
                 <span class="chip-label">과목</span>
@@ -203,7 +203,7 @@
                   <button class="habit-day-btn" data-day="0">일</button>
                 </div>
               </div>
-              <button id="habitAddBtn" class="btn-manual-add" style="margin-top:6px">추가</button>
+              <button id="habitAddBtn" class="btn-manual-add">습관 추가</button>
             </div>
           </div>
 
