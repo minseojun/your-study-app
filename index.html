@@ -35,7 +35,7 @@
   <div id="notifToast"><span id="notifIcon">🔔</span><span id="notifMsg"></span><button id="notifClose">✕</button></div>
 
   <!-- 캘린더 일과 추가 모달 -->
-  <div id="calAddModalBackdrop" class="cal-modal-backdrop">
+  <div id="calAddModalBackdrop" class="cal-modal-backdrop" style="display:none">
     <div id="calAddModal" class="cal-modal">
       <div class="cal-modal-header">
         <h3>일과 추가</h3>
@@ -132,11 +132,47 @@
     <div id="tab-today" class="tab-panel active">
       <div class="tab-inner">
 
-        <section class="card">
-          <div class="card-header">
-            <h2 class="card-title">📅 주간 일과</h2>
-          </div>
+        <!-- ══ 주간 캘린더 + 일과 통합 카드 ══ -->
+        <section class="card cal-unified-card">
+
+          <!-- 캘린더 스트립 -->
           <div id="calendarWrap"></div>
+
+          <!-- 선택된 날짜 패널 -->
+          <div id="dayPanel" class="day-panel">
+            <div class="day-panel-header">
+              <div class="day-panel-title-row">
+                <span id="dayPanelDate" class="day-panel-date"></span>
+                <span id="taskCount" class="badge">0개</span>
+              </div>
+              <div class="input-area">
+                <div class="input-row">
+                  <input id="taskInput" type="text" placeholder="할 일 추가" maxlength="50" autocomplete="off"/>
+                  <button id="addBtn" class="btn-add" aria-label="추가">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+                <div class="chip-row">
+                  <span class="chip-label">과목</span>
+                  <div id="categoryChips">
+                    <button class="chip active" data-cat="국어">📖 국어</button>
+                    <button class="chip" data-cat="영어">🔤 영어</button>
+                    <button class="chip" data-cat="수학">📐 수학</button>
+                    <button class="chip" data-cat="사회문화">🌏 사회문화</button>
+                    <button class="chip" data-cat="생활과윤리">⚖️ 생활과윤리</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ul id="taskList"></ul>
+            <div id="emptyState" class="empty-state"><span>📋</span><p>할 일을 추가해봐요</p></div>
+            <div id="progressRow" class="progress-row" style="display:none">
+              <span class="progress-text"><span id="doneCount">0</span>/<span id="totalCount">0</span> 완료</span>
+              <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+            </div>
+          </div>
+
+          <!-- 반복 습관 -->
           <div class="habit-section">
             <button class="manual-inline-toggle" id="habitToggleBtn">
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -172,37 +208,7 @@
               <button id="habitAddBtn" class="btn-manual-add" style="margin-top:8px">습관 추가</button>
             </div>
           </div>
-        </section>
 
-        <section class="card">
-          <div class="card-header">
-            <h2 class="card-title">오늘의 공부</h2>
-            <span id="taskCount" class="badge">0개</span>
-          </div>
-          <div class="input-area">
-            <div class="input-row">
-              <input id="taskInput" type="text" placeholder="공부할 내용 입력" maxlength="50" autocomplete="off"/>
-              <button id="addBtn" class="btn-add" aria-label="추가">
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-              </button>
-            </div>
-            <div class="chip-row">
-              <span class="chip-label">과목</span>
-              <div id="categoryChips">
-                <button class="chip active" data-cat="국어">📖 국어</button>
-                <button class="chip" data-cat="영어">🔤 영어</button>
-                <button class="chip" data-cat="수학">📐 수학</button>
-                <button class="chip" data-cat="사회문화">🌏 사회문화</button>
-                <button class="chip" data-cat="생활과윤리">⚖️ 생활과윤리</button>
-              </div>
-            </div>
-          </div>
-          <ul id="taskList"></ul>
-          <div id="emptyState" class="empty-state"><span>📋</span><p>할 일을 추가해봐요</p></div>
-          <div id="progressRow" class="progress-row" style="display:none">
-            <span class="progress-text"><span id="doneCount">0</span>/<span id="totalCount">0</span> 완료</span>
-            <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
-          </div>
         </section>
 
         <section class="card sleep-card">
