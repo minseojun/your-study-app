@@ -643,7 +643,16 @@ function updateLectureModeBtn(){
   if(lectureMode){btn.textContent='📺 인강 모드 ON · 탭하여 종료';btn.classList.add('active');}
   else{btn.textContent='📺 인강 시청';btn.classList.remove('active');}
 }
-document.getElementById('lectureModeBtn').addEventListener('click',()=>{ lectureMode=!lectureMode; updateLectureModeBtn(); showNotif(lectureMode?'인강 모드 ON':'인강 모드 OFF',lectureMode?'📺':'✅'); });
+document.getElementById('lectureModeBtn')?.addEventListener('click',()=>{
+  lectureMode=!lectureMode; updateLectureModeBtn();
+  if(lectureMode){
+    showNotif('인강 모드 ON — 화면 이탈이 방해 횟수로 카운트되지 않아요','📺');
+    document.getElementById('lectureModeBtn').textContent='📺 인강 모드 ON · 다시 탭하여 종료';
+  } else {
+    showNotif('인강 모드 OFF — 집중 모드로 돌아왔어요','✅');
+    document.getElementById('lectureModeBtn').textContent='📺 인강 시청 시작';
+  }
+});
 
 /* ══════════════════════════════════════════════════════════
    9. 모의고사 타이머
@@ -708,10 +717,22 @@ function finishMockTimer(){
   if(mockSubject.cat&&SUBJECTS.includes(mockSubject.cat)){
     subjectTime[mockSubject.cat]=(subjectTime[mockSubject.cat]||0)+ms;
     totalMs+=ms; elapsed+=ms;
+    // sessions에도 추가 → 히트맵 반영
+    sessions=[...sessions,{ms, startHour:new Date().getHours(), cat:mockSubject.cat, mock:true}];
     saveTimerState(); updateAccumLabel(); renderGoalBars(); updateLiveScore();
   }
   showNotif(`${mockSubject.label} 모의고사 완료! ${mockSubject.minutes}분 기록됐어요 🎉`,'📝');
+  // 모의고사 패널 닫기 및 상태 초기화
   const panel=document.getElementById('mockPanel'); if(panel)panel.style.display='none';
+  // 타이머 wrap도 닫기
+  const wrap=document.getElementById('mockTimerWrap');
+  const outer=document.getElementById('mockOuterWrap');
+  const btn=document.getElementById('mockTimerToggle');
+  if(wrap) wrap.style.display='none';
+  if(btn)  btn.classList.remove('open');
+  if(outer) outer.classList.remove('open');
+  // 기능 탭도 닫기
+  switchTimerTab(null);
   mockSubject=null; mockRemaining=0;
   document.querySelectorAll('.mock-chip').forEach(c=>c.classList.remove('active'));
 }
@@ -721,15 +742,7 @@ document.getElementById('mockResetBtn')?.addEventListener('click',()=>{
   if(mockSubject){mockRemaining=mockSubject.minutes*60000;updateMockDisplay();}
   const sb=document.getElementById('mockStartBtn'); if(sb){sb.textContent='시작';sb.classList.remove('stop');}
 });
-document.getElementById('mockTimerToggle')?.addEventListener('click',()=>{
-  const wrap=document.getElementById('mockTimerWrap'); if(!wrap)return;
-  const outer=document.getElementById('mockOuterWrap');
-  const btn=document.getElementById('mockTimerToggle');
-  const isOpen=!wrap.style.display||wrap.style.display==='none';
-  wrap.style.display=isOpen?'block':'none';
-  btn.classList.toggle('open',isOpen);
-  if(outer) outer.classList.toggle('open',isOpen);
-});
+
 
 /* ══════════════════════════════════════════════════════════
    10. 수면 관리
@@ -887,14 +900,34 @@ document.getElementById('weeklyReportBackdrop').addEventListener('click',e=>{ if
 /* ══════════════════════════════════════════════════════════
    13. 수동 기록 추가
    ══════════════════════════════════════════════════════════ */
+/* ── 타이머 기능 탭 전환 ── */
+let activeTimerTab = null;
+
+function switchTimerTab(tab){
+  ['lecture','mock','manual'].forEach(t=>{
+    const panel=document.getElementById('timerPanel'+t.charAt(0).toUpperCase()+t.slice(1));
+    const btn=document.getElementById('funcTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(panel) panel.style.display=(tab===t)?'block':'none';
+    if(btn)   btn.classList.toggle('active', tab===t);
+  });
+  activeTimerTab=tab;
+  // 모의고사 탭 닫을 때 타이머 일시정지
+  if(tab!=='mock' && mockRunning) pauseMockTimer();
+  // 인강 탭 닫을 때 모드 해제
+  if(tab!=='lecture' && lectureMode){ lectureMode=false; updateLectureModeBtn(); }
+}
+
+document.querySelectorAll('.timer-func-tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const t=btn.dataset.tab;
+    switchTimerTab(activeTimerTab===t?null:t);
+  });
+});
+
 (function initManualAdd(){
   const dateInput=document.getElementById('manualDate'); if(!dateInput)return;
   const today=new Date().toISOString().slice(0,10); dateInput.value=today; dateInput.max=today;
-  document.getElementById('manualToggleBtn').addEventListener('click',()=>{
-    const panel=document.getElementById('manualInlinePanel'),btn=document.getElementById('manualToggleBtn'),wrap=btn.closest('.manual-inline-wrap');
-    const isClosed=!panel.style.display||panel.style.display==='none';
-    panel.style.display=isClosed?'block':'none'; btn.classList.toggle('open',isClosed); if(wrap)wrap.classList.toggle('open',isClosed);
-  });
+  
   let manualCat='국어';
   document.getElementById('manualSubjectChips').addEventListener('click',e=>{ const chip=e.target.closest('.chip');if(!chip)return; document.querySelectorAll('#manualSubjectChips .chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); manualCat=chip.dataset.cat; });
   document.getElementById('manualAddBtn').addEventListener('click',()=>{
