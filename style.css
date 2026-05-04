@@ -300,23 +300,27 @@ ul#taskList::-webkit-scrollbar-thumb,ul#tomorrowList::-webkit-scrollbar-thumb{ba
 .cal-modal-footer .btn-goal-cancel,.cal-modal-footer .btn-goal-save{flex:1}
 
 /* ══════════════════════════════════════════════════════════
-   반복 습관
+   반복 습관 (인라인)
    ══════════════════════════════════════════════════════════ */
-.habit-section{margin-top:-4px}
-.habit-panel{padding:12px 0 4px;display:flex;flex-direction:column;gap:10px;animation:slideDown .2s ease both}
+.habit-section-inline{border-top:1px solid var(--border-soft);padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.habit-inline-header{display:flex;align-items:center;justify-content:space-between}
+.habit-inline-title{font-size:.78rem;font-weight:600;color:var(--text-2)}
+.habit-add-form{display:flex;flex-direction:column;gap:9px;background:var(--bg);border-radius:var(--r-sm);padding:11px;border:1px solid var(--border-soft);animation:slideDown .2s ease both}
 @keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.habit-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:var(--r-sm);border:1px solid var(--border-soft)}
-.habit-info{flex:1;display:flex;flex-direction:column;gap:2px}
-.habit-text{font-size:.83rem;color:var(--text-1);font-weight:500}
-.habit-days{font-size:.7rem;color:var(--text-3)}
+.habit-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg);border-radius:var(--r-sm);border:1px solid var(--border-soft)}
+.habit-info{flex:1;display:flex;flex-direction:column;gap:1px}
+.habit-text{font-size:.82rem;color:var(--text-1);font-weight:500}
+.habit-days{font-size:.68rem;color:var(--text-3)}
 .habit-del-btn{width:24px;height:24px;border:none;background:transparent;color:var(--text-3);cursor:pointer;border-radius:6px;display:grid;place-items:center;transition:all var(--tr)}
 .habit-del-btn:hover{background:var(--danger-s);color:var(--danger)}
-.habit-empty{font-size:.8rem;color:var(--text-3);text-align:center;padding:8px 0}
-.habit-add-row{display:flex;gap:8px}
+.habit-empty{font-size:.78rem;color:var(--text-3);padding:4px 0}
 .habit-days-row{display:flex;align-items:center;gap:8px}
 .habit-days{display:flex;gap:5px;flex-wrap:wrap}
-.habit-day-btn{width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-family:var(--font);font-size:.75rem;font-weight:600;color:var(--text-2);cursor:pointer;transition:all var(--tr);flex-shrink:0}
+.habit-day-btn{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-family:var(--font);font-size:.73rem;font-weight:600;color:var(--text-2);cursor:pointer;transition:all var(--tr);flex-shrink:0}
 .habit-day-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* 습관 아이템 아이콘 */
+.habit-task-icon{font-size:.65rem;opacity:.5;flex-shrink:0;margin-right:-3px}
+.task-item.habit-task{border-left:2px solid var(--border)}
 
 /* ══════════════════════════════════════════════════════════
    분석 탭
@@ -412,18 +416,17 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
 .btn-lecture-mode.active{border-style:solid;border-color:#ffa94d;background:rgba(255,169,77,.1);color:#ffa94d;font-weight:500}
 
 /* 모의고사 타이머 */
-.mock-timer-wrap{border-top:1px solid var(--border-soft);padding-top:10px;display:flex;flex-direction:column;gap:10px;animation:slideDown .2s ease both}
-.mock-subject-btns{display:flex;gap:6px;flex-wrap:wrap}
-.mock-chip{height:28px;padding:0 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);font-family:var(--font);font-size:.74rem;font-weight:500;color:var(--text-2);cursor:pointer;transition:all var(--tr);white-space:nowrap}
+.mock-inline-panel{gap:12px}
+.mock-subject-btns{display:flex;gap:5px;flex-wrap:wrap}
+.mock-chip{height:26px;padding:0 9px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);font-family:var(--font);font-size:.72rem;font-weight:500;color:var(--text-2);cursor:pointer;transition:all var(--tr);white-space:nowrap;flex-shrink:0}
 .mock-chip:hover{border-color:var(--danger);color:var(--danger)}
 .mock-chip.active{background:var(--danger);color:#fff;border-color:var(--danger)}
-.mock-panel{display:flex;flex-direction:column;gap:8px;background:var(--bg);border-radius:var(--r-sm);padding:12px;animation:slideDown .2s ease both}
-.mock-hint{font-size:.76rem;color:var(--text-2);text-align:center;font-weight:600}
-.mock-display{display:flex;align-items:baseline;justify-content:center;padding:10px 0 2px}
+.mock-hint{font-size:.76rem;color:var(--text-2);text-align:center;font-weight:600;margin-bottom:-4px}
+.mock-display{display:flex;align-items:baseline;justify-content:center;padding:8px 0 2px}
 .mock-display span{font-family:var(--mono);font-size:3.6rem;font-weight:500;color:var(--text-1);letter-spacing:-.03em;transition:color var(--tr)}
 .mock-display .sep{font-size:3rem;font-weight:300;color:var(--text-3);margin:0 2px;padding-bottom:4px}
-.mock-display.running span:not(.sep){color:var(--accent)}
-.mock-display.running .sep{color:rgba(0,113,227,.3)}
+.mock-display.running span:not(.sep){color:var(--danger)}
+.mock-display.running .sep{color:rgba(255,59,48,.3)}
 
 /* 수동 기록 추가 */
 .manual-inline-wrap{border-radius:var(--r-sm);overflow:hidden;border:1.5px dashed var(--border);transition:border-color var(--tr)}
