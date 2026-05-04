@@ -339,8 +339,8 @@ function buildDayItem(task,idx,dateStr,isToday){
         // 가상 habitTask면 todayTasks에 실체화
         const existing=todayTasks.findIndex(t=>t.habitId===task.habitId);
         if(existing>=0){ todayTasks[existing].done=!todayTasks[existing].done; }
-        else { todayTasks.push({...task,done:!task.done,_virtual:undefined}); }
-        lsSet(K.TODAY_TASKS,todayTasks);
+        else { todayTasks.push({text:task.text,cat:task.cat,done:!task.done,habitId:task.habitId}); }
+        lsSet(K.TODAY_TASKS, todayTasks.filter(t=>!t._virtual));
       } else {
         todayTasks[todayTasks.findIndex(t=>t===task||t.text===task.text)].done=!task.done;
         lsSet(K.TODAY_TASKS,todayTasks);
@@ -1029,5 +1029,6 @@ syncSubjectChips(selectedCat);
 renderMockBtns();
 renderHabits();
 renderCalendar();
+renderDayPanel();
 if(window._needChipSync){ syncSubjectChips(selectedCat); window._needChipSync=false; }
 if(running) tick();
