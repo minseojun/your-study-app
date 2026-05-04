@@ -261,7 +261,7 @@ ul#taskList::-webkit-scrollbar-thumb,ul#tomorrowList::-webkit-scrollbar-thumb{ba
 .cal-scroll::-webkit-scrollbar{height:3px}
 .cal-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 .cal-grid{display:flex;gap:8px;min-width:max-content;padding:2px}
-.cal-col{min-width:88px;flex-shrink:0;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--bg);padding:8px 7px;transition:border-color var(--tr)}
+.cal-col{min-width:78px;flex-shrink:0;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--bg);padding:8px 7px;transition:border-color var(--tr)}
 .cal-col.cal-today{border-color:var(--accent);background:var(--accent-s)}
 body.night .cal-col.cal-today{background:#0d1f38}
 .cal-col-header{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--border-soft)}
@@ -279,8 +279,8 @@ body.night .cal-col.cal-today{background:#0d1f38}
 .cal-add-btn:hover{background:var(--border-soft);color:var(--accent)}
 
 /* 캘린더 추가 모달 */
-.cal-modal-backdrop{position:fixed;inset:0;z-index:9002;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(29,29,31,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);visibility:hidden;pointer-events:none;opacity:0;transition:opacity .22s,visibility .22s}
-.cal-modal-backdrop.show{visibility:visible;pointer-events:auto;opacity:1}
+.cal-modal-backdrop{position:fixed;inset:0;z-index:9002;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(29,29,31,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);visibility:hidden !important;pointer-events:none;opacity:0;transition:opacity .22s,visibility .22s}
+.cal-modal-backdrop.show{visibility:visible !important;pointer-events:auto;opacity:1}
 .cal-modal{background:var(--card);border-radius:var(--r-lg);width:100%;max-width:360px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--sh-lg)}
 .cal-modal-header{display:flex;align-items:center;justify-content:space-between}
 .cal-modal-header h3{font-size:.95rem;font-weight:600;color:var(--text-1)}
@@ -342,10 +342,10 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
 .subject-heatmap-grid{display:flex;flex-direction:column;gap:7px}
 .subject-hm-row{display:flex;align-items:center;gap:8px}
 .subject-hm-label{font-size:.7rem;color:var(--text-2);font-weight:500;min-width:58px;flex-shrink:0;display:flex;align-items:center;gap:4px}
-.subject-hm-cells{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;flex:1}
-.hm-cell-sm{border-radius:3px;aspect-ratio:1;transition:transform .15s}
+.subject-hm-cells{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;flex:1}
+.hm-cell-sm{border-radius:3px;aspect-ratio:1;transition:transform .15s;max-width:18px}
 .hm-cell-sm:hover{transform:scale(1.4);z-index:1}
-.hm-hour-label{font-size:.54rem;color:var(--text-3);text-align:center;height:14px;display:flex;align-items:center;justify-content:center}
+.hm-hour-label{font-size:.6rem;color:var(--text-3);text-align:center;height:14px;display:flex;align-items:center;justify-content:center}
 
 /* ══════════════════════════════════════════════════════════
    타이머 탭
@@ -410,9 +410,11 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
 .mock-chip.active{background:var(--danger);color:#fff;border-color:var(--danger)}
 .mock-panel{display:flex;flex-direction:column;gap:8px;background:var(--bg);border-radius:var(--r-sm);padding:12px;animation:slideDown .2s ease both}
 .mock-hint{font-size:.76rem;color:var(--text-2);text-align:center;font-weight:600}
-.mock-display{display:flex;align-items:baseline;justify-content:center;gap:2px;padding:4px 0}
-.mock-display span{font-family:var(--mono);font-size:2.8rem;font-weight:500;color:var(--text-1);letter-spacing:-.03em;transition:color .3s}
-.mock-display .sep{font-size:2.2rem;font-weight:300;color:var(--text-3);margin:0 2px;padding-bottom:3px}
+.mock-display{display:flex;align-items:baseline;justify-content:center;padding:10px 0 2px}
+.mock-display span{font-family:var(--mono);font-size:3.6rem;font-weight:500;color:var(--text-1);letter-spacing:-.03em;transition:color var(--tr)}
+.mock-display .sep{font-size:3rem;font-weight:300;color:var(--text-3);margin:0 2px;padding-bottom:4px}
+.mock-display.running span:not(.sep){color:var(--accent)}
+.mock-display.running .sep{color:rgba(0,113,227,.3)}
 
 /* 수동 기록 추가 */
 .manual-inline-wrap{border-radius:var(--r-sm);overflow:hidden;border:1.5px dashed var(--border);transition:border-color var(--tr)}
