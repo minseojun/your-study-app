@@ -59,12 +59,6 @@ function updateAccumLabel(){
   document.getElementById('swAccum').textContent = msToReadable(nowMs())||'0분';
 }
 
-/* ── 과목 칩 UI ── */
-function syncSubjectChips(cat){
-  document.querySelectorAll('#timerCategoryChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat===cat));
-  document.querySelectorAll('#categoryChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat===cat));
-}
-
 /* ── 타이머 UI 상태 ── */
 function updateTimerUI(){
   const btn       = document.getElementById('startStopBtn');
@@ -171,6 +165,19 @@ document.addEventListener('visibilitychange', ()=>{
     }
   }
 });
+
+/* ── 집중 오버레이 ── */
+const focusOverlay = document.getElementById('focusOverlay');
+
+function showOverlay(){
+  if(running && !lectureMode){
+    distractions++;
+    saveTimerState();
+    focusOverlay.classList.add('show');
+    updateLiveScore();
+  }
+}
+document.getElementById('overlayBackBtn').addEventListener('click', ()=>focusOverlay.classList.remove('show'));
 
 /* ── 인강 모드 ── */
 let lectureMode = false;
