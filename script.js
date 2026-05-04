@@ -187,8 +187,16 @@ function postponeTask(idx){ const t=todayTasks.splice(idx,1)[0]; tomorrowTasks.p
 function addTask(){
   const text=document.getElementById('taskInput').value.trim();
   if(!text){ const inp=document.getElementById('taskInput'); inp.classList.add('shake'); inp.addEventListener('animationend',()=>inp.classList.remove('shake'),{once:true}); return; }
-  todayTasks.push({text,cat:selectedCat,done:false}); lsSet(K.TODAY_TASKS,todayTasks);
-  document.getElementById('taskInput').value=''; renderToday();
+  const isToday=calSelectedDate===todayStr();
+  if(isToday){
+    todayTasks.push({text,cat:selectedCat,done:false}); lsSet(K.TODAY_TASKS,todayTasks);
+  } else {
+    const tasks=getTasksForDate(calSelectedDate);
+    tasks.push({text,cat:selectedCat,done:false});
+    saveCalTask(calSelectedDate,tasks);
+  }
+  document.getElementById('taskInput').value='';
+  renderDayPanel(); renderCalendar();
 }
 document.getElementById('addBtn').addEventListener('click',addTask);
 document.getElementById('taskInput').addEventListener('keydown',e=>{ if(e.key==='Enter')addTask(); });
@@ -230,68 +238,114 @@ function getTasksForDate(dateStr){
 
 function saveCalTask(dateStr,tasks){ calTasks[dateStr]=tasks; lsSet(K.CAL_TASKS,calTasks); }
 
+/* 캘린더 스트립 — 날짜 셀만, 클릭하면 아래 패널 업데이트 */
 function renderCalendar(){
   const wrap=document.getElementById('calendarWrap'); if(!wrap)return;
   const weeks=getWeekDates();
   const history=lsGet(K.HISTORY)||[];
 
-  let html='<div class="cal-scroll"><div class="cal-grid">';
-
+  let html='<div class="cal-strip-scroll"><div class="cal-strip">';
   weeks.forEach(d=>{
     const ds=dateStrOf(d);
     const isToday=ds===todayStr(), isSel=ds===calSelectedDate;
     const hist=history.find(h=>h.date===ds)||(ds===todayStr()?{totalMs}:null);
     const mins=hist?Math.round(hist.totalMs/60000):0;
     const tasks=getTasksForDate(ds);
-
-    html+=`<div class="cal-col${isToday?' cal-today':''}${isSel?' cal-selected':''}" data-date="${ds}">
-      <div class="cal-col-header">
-        <span class="cal-day-name">${DAYS_KO[d.getDay()]}</span>
-        <span class="cal-day-num${isToday?' is-today':''}">${d.getDate()}</span>
-        <span class="cal-day-time">${mins>0?mins+'분':''}</span>
-      </div>
-      <div class="cal-task-list">`;
-
-    tasks.forEach((t,i)=>{
-      html+=`<div class="cal-task-item${t.done?' done':''}" data-action="toggle" data-date="${ds}" data-idx="${i}">
-        <span class="cal-cb${t.done?' checked':''}"></span>
-        <span class="cat-dot cat-${t.cat||'국어'}"></span>
-        <span class="cal-task-text">${t.text}</span>
-      </div>`;
-    });
-
-    html+=`</div>
-      <button class="cal-add-btn" data-action="add" data-date="${ds}">+ 추가</button>
-    </div>`;
+    const doneCnt=tasks.filter(t=>t.done).length;
+    const totalCnt=tasks.length;
+    html+=`<button class="cal-day-btn${isToday?' is-today':''}${isSel?' is-selected':''}" data-date="${ds}">
+      <span class="cal-strip-day">${DAYS_KO[d.getDay()]}</span>
+      <span class="cal-strip-num">${d.getDate()}</span>
+      <span class="cal-strip-time">${mins>0?mins+'분':''}</span>
+      ${totalCnt>0?`<span class="cal-strip-dot" style="opacity:${doneCnt===totalCnt?1:.4}"></span>`:'<span class="cal-strip-dot" style="opacity:0"></span>'}
+    </button>`;
   });
-
   html+='</div></div>';
   wrap.innerHTML=html;
 
   wrap.addEventListener('click',e=>{
-    const addBtn=e.target.closest('[data-action="add"]');
-    const toggleEl=e.target.closest('[data-action="toggle"]');
-    if(addBtn){ e.stopPropagation(); openCalAddModal(addBtn.dataset.date); return; }
-    if(toggleEl){
-      e.stopPropagation();
-      const ds=toggleEl.dataset.date, idx=parseInt(toggleEl.dataset.idx);
-      const tasks=getTasksForDate(ds);
-      tasks[idx].done=!tasks[idx].done;
-      saveCalTask(ds,tasks); renderCalendar(); return;
-    }
+    const btn=e.target.closest('.cal-day-btn'); if(!btn)return;
+    calSelectedDate=btn.dataset.date;
+    renderCalendar();
+    renderDayPanel();
   });
 }
 
+/* 선택 날짜 패널 */
+function renderDayPanel(){
+  const ds=calSelectedDate;
+  const isToday=ds===todayStr();
+  const d=new Date(ds);
+  const dateLabel=`${d.getMonth()+1}월 ${d.getDate()}일 (${DAYS_KO[d.getDay()]})${isToday?' · 오늘':''}`;
+  const el=document.getElementById('dayPanelDate');
+  if(el) el.textContent=dateLabel;
+
+  if(isToday){
+    // 오늘: 기존 todayTasks 사용
+    renderToday();
+  } else {
+    // 다른 날짜: calTasks에서 렌더
+    const tasks=getTasksForDate(ds);
+    const tl=document.getElementById('taskList'); if(!tl)return;
+    tl.innerHTML='';
+    tasks.forEach((t,i)=>{
+      tl.appendChild(buildCalItem(t,i,ds));
+    });
+    const total=tasks.length, done=tasks.filter(t=>t.done).length;
+    document.getElementById('emptyState').style.display=total===0?'flex':'none';
+    document.getElementById('taskCount').textContent=`${total}개`;
+    document.getElementById('progressRow').style.display=total===0?'none':'flex';
+    if(total>0){
+      document.getElementById('doneCount').textContent=done;
+      document.getElementById('totalCount').textContent=total;
+      document.getElementById('progressFill').style.width=Math.round(done/total*100)+'%';
+    }
+    // 다른 날짜 입력란 — addBtn 동작 교체
+    const inp=document.getElementById('taskInput');
+    if(inp) inp.placeholder=`${dateLabel} 할 일 추가`;
+  }
+}
+
+function buildCalItem(task,idx,dateStr){
+  const li=document.createElement('li');
+  li.className='task-item'+(task.done?' done':'');
+  const cb=document.createElement('input'); cb.type='checkbox'; cb.className='task-cb'; cb.checked=task.done;
+  cb.addEventListener('change',()=>{
+    const tasks=getTasksForDate(dateStr);
+    tasks[idx].done=!tasks[idx].done;
+    saveCalTask(dateStr,tasks); renderDayPanel(); renderCalendar();
+  });
+  li.appendChild(cb);
+  const dot=document.createElement('span'); dot.className=`cat-dot cat-${task.cat||'국어'}`; li.appendChild(dot);
+  const txt=document.createElement('span'); txt.className='task-text'; txt.textContent=task.text; li.appendChild(txt);
+  const badge=document.createElement('span'); badge.className='cat-badge'; badge.textContent=task.cat||'국어'; li.appendChild(badge);
+  const acts=document.createElement('div'); acts.className='task-actions';
+  const db=document.createElement('button'); db.className='del'; db.title='삭제'; db.innerHTML=S_DEL;
+  db.addEventListener('click',()=>{
+    const tasks=getTasksForDate(dateStr);
+    if(!tasks[idx].habitId) tasks.splice(idx,1);
+    saveCalTask(dateStr,tasks); renderDayPanel(); renderCalendar();
+  });
+  acts.appendChild(db); li.appendChild(acts);
+  return li;
+}
+
 function openCalAddModal(dateStr){
-  const modal=document.getElementById('calAddModal'); if(!modal)return;
+  const bd=document.getElementById('calAddModalBackdrop');
+  const modal=document.getElementById('calAddModal'); if(!modal||!bd)return;
   document.getElementById('calAddDateLabel').textContent=dateStr;
   modal.dataset.targetDate=dateStr;
-  modal.classList.add('show');
+  bd.style.display='flex';
+  requestAnimationFrame(()=>bd.classList.add('show'));
   document.getElementById('calAddInput').value='';
-  document.getElementById('calAddInput').focus();
+  setTimeout(()=>document.getElementById('calAddInput').focus(),100);
   document.querySelectorAll('#calAddChips .chip').forEach((c,i)=>c.classList.toggle('active',i===0));
 }
-function closeCalAddModal(){ document.getElementById('calAddModal')?.classList.remove('show'); }
+function closeCalAddModal(){
+  const bd=document.getElementById('calAddModalBackdrop'); if(!bd)return;
+  bd.classList.remove('show');
+  setTimeout(()=>{ bd.style.display='none'; },240);
+}
 document.getElementById('calAddModalBackdrop')?.addEventListener('click',closeCalAddModal);
 document.getElementById('calAddCancel')?.addEventListener('click',closeCalAddModal);
 document.getElementById('calAddConfirm')?.addEventListener('click',()=>{
@@ -331,7 +385,7 @@ document.getElementById('habitAddBtn')?.addEventListener('click',()=>{
   lsSet(K.HABITS,habits);
   document.getElementById('habitInput').value='';
   document.querySelectorAll('.habit-day-btn').forEach(b=>b.classList.remove('active'));
-  renderHabits(); renderCalendar();
+  renderHabits(); renderCalendar(); renderDayPanel();
   showNotif(`"${text}" 습관 등록됐어요`,'🔁');
 });
 document.querySelectorAll('.habit-day-btn').forEach(btn=>btn.addEventListener('click',()=>btn.classList.toggle('active')));
@@ -552,6 +606,7 @@ function updateMockDisplay(){
 function startMockTimer(){
   if(!mockSubject)return; mockRunning=true;
   const sb=document.getElementById('mockStartBtn'); if(sb){sb.textContent='일시정지';sb.classList.add('stop');}
+  document.getElementById('mockTimerRing')?.classList.add('running');
   const startAt=Date.now(), startRem=mockRemaining;
   mockTicker=setInterval(()=>{
     mockRemaining=Math.max(0,startRem-(Date.now()-startAt)); updateMockDisplay();
@@ -561,6 +616,7 @@ function startMockTimer(){
 function pauseMockTimer(){
   mockRunning=false; clearInterval(mockTicker); mockTicker=null;
   const sb=document.getElementById('mockStartBtn'); if(sb){sb.textContent='계속';sb.classList.remove('stop');}
+  document.getElementById('mockTimerRing')?.classList.remove('running');
 }
 function finishMockTimer(){
   if(!mockSubject)return;
@@ -668,35 +724,39 @@ function renderHeatmap(){
 function renderSubjectHeatmap(){
   const container=document.getElementById('subjectHeatmapGrid'); if(!container)return;
   container.innerHTML='';
+  // 2시간 버킷으로 집계 (12칸)
   const subMap={};
-  SUBJECTS.forEach(sub=>{subMap[sub]=new Array(24).fill(0);});
-  getHistoryWithToday().forEach(day=>(day.sessions||[]).forEach(s=>{ if(s.cat&&subMap[s.cat])subMap[s.cat][s.startHour]+=s.ms; }));
+  SUBJECTS.forEach(sub=>{subMap[sub]=new Array(12).fill(0);});
+  getHistoryWithToday().forEach(day=>(day.sessions||[]).forEach(s=>{
+    if(s.cat&&subMap[s.cat]) subMap[s.cat][Math.floor(s.startHour/2)]+=s.ms;
+  }));
 
   SUBJECTS.forEach(sub=>{
+    const total=subMap[sub].reduce((a,b)=>a+b,0); if(total===0)return;
     const maxVal=Math.max(...subMap[sub],1);
     const row=document.createElement('div'); row.className='subject-hm-row';
     const lbl=document.createElement('span'); lbl.className='subject-hm-label';
     lbl.innerHTML=`<span class="cat-dot cat-${sub}"></span>${sub}`;
     row.appendChild(lbl);
     const cells=document.createElement('div'); cells.className='subject-hm-cells';
-    subMap[sub].forEach((ms,h)=>{
+    subMap[sub].forEach((ms,i)=>{
       const cell=document.createElement('div'); cell.className='hm-cell hm-cell-sm';
       const lvl=ms===0?0:ms<maxVal*.25?1:ms<maxVal*.5?2:ms<maxVal*.75?3:4;
-      const alphas=['00','55','99','cc','ff'];
+      const alphas=['00','44','88','bb','ff'];
       cell.style.background=ms===0?'var(--border)':`${SUBJECT_COLORS[sub]}${alphas[lvl]}`;
-      cell.title=`${sub} ${h}시: ${msToReadable(ms)}`;
+      cell.title=`${sub} ${i*2}~${i*2+2}시: ${msToReadable(ms)}`;
       cells.appendChild(cell);
     });
     row.appendChild(cells); container.appendChild(row);
   });
 
-  // 시간 레이블 행
+  // 시간 레이블
   const labelRow=document.createElement('div'); labelRow.className='subject-hm-row';
   const emptyLbl=document.createElement('span'); emptyLbl.className='subject-hm-label'; labelRow.appendChild(emptyLbl);
   const labelCells=document.createElement('div'); labelCells.className='subject-hm-cells';
-  for(let h=0;h<24;h++){
+  for(let i=0;i<12;i++){
     const l=document.createElement('div'); l.className='hm-hour-label';
-    l.textContent=h%6===0?`${h}시`:''; labelCells.appendChild(l);
+    l.textContent=i%3===0?`${i*2}시`:''; labelCells.appendChild(l);
   }
   labelRow.appendChild(labelCells); container.appendChild(labelRow);
 }
