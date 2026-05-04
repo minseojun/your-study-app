@@ -23,7 +23,7 @@
   <div id="focusOverlay">
     <div class="overlay-inner">
       <div class="overlay-icon">🚨</div>
-      <h1 class="overlay-title">집중해!</h1>
+      <h1 class="overlay-title">동생아, 집중해!</h1>
       <p class="overlay-sub">수능 <strong>D-<span id="dDayCount">???</span></strong>일 남았어!</p>
       <p class="overlay-msg">화면을 벗어났어. 다시 집중하자 💪</p>
       <button id="overlayBackBtn">다시 집중하기</button>
@@ -395,7 +395,18 @@
     </button>
   </nav>
 
-  <script src="script.js"></script>
+  <!-- ── JS 모듈 (순서 중요) ── -->
+  <script src="js/core.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/goals.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/sleep.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/report.js"></script>
+  <script src="js/manual.js"></script>
+  <script src="js/coach.js"></script>
+  <script src="js/main.js"></script>
   <script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script>
 </body>
 </html>
