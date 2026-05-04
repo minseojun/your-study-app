@@ -172,17 +172,15 @@
             </div>
           </div>
 
-          <!-- 반복 습관 -->
-          <div class="habit-section">
-            <button class="manual-inline-toggle" id="habitToggleBtn">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              반복 습관 관리
-            </button>
-            <div id="habitPanel" class="habit-panel" style="display:none">
-              <div id="habitList"></div>
-              <div class="habit-add-row">
-                <input type="text" id="habitInput" class="manual-field-input" placeholder="습관 이름 (예: 수학 인강)" maxlength="30" autocomplete="off"/>
-              </div>
+          <!-- 반복 습관 — 인라인, 탭 없음 -->
+          <div class="habit-section-inline">
+            <div class="habit-inline-header">
+              <span class="habit-inline-title">🔁 반복 습관</span>
+              <button class="btn-goal-edit" id="habitAddToggleBtn">+ 추가</button>
+            </div>
+            <div id="habitList"></div>
+            <div id="habitAddForm" class="habit-add-form" style="display:none">
+              <input type="text" id="habitInput" class="manual-field-input" placeholder="습관 이름 (예: 수학 인강)" maxlength="30" autocomplete="off"/>
               <div class="chip-row" style="padding:0">
                 <span class="chip-label">과목</span>
                 <div id="habitCatChips" style="display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none">
@@ -205,7 +203,7 @@
                   <button class="habit-day-btn" data-day="0">일</button>
                 </div>
               </div>
-              <button id="habitAddBtn" class="btn-manual-add" style="margin-top:8px">습관 추가</button>
+              <button id="habitAddBtn" class="btn-manual-add" style="margin-top:6px">추가</button>
             </div>
           </div>
 
@@ -222,14 +220,12 @@
           </div>
         </section>
 
-        <section class="card card-tomorrow">
-          <div class="card-header">
-            <h2 class="card-title muted">내일로 미룬 것들</h2>
-            <span id="tomorrowCount" class="badge muted">0개</span>
-          </div>
+        <!-- 내일로 미룬 것들: 캘린더 내일 날짜에 표시됨 (카드 제거) -->
+        <div style="display:none" aria-hidden="true">
           <ul id="tomorrowList"></ul>
-          <div id="tomorrowEmpty" class="empty-state small"><span>🌙</span><p>미룬 항목이 없어요</p></div>
-        </section>
+          <span id="tomorrowCount"></span>
+          <div id="tomorrowEmpty"></div>
+        </div>
 
       </div>
     </div>
@@ -283,22 +279,24 @@
           <button id="lectureModeBtn" class="btn-lecture-mode">📺 인강 시청</button>
 
           <!-- 모의고사 타이머 -->
-          <button class="manual-inline-toggle" id="mockTimerToggle">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            모의고사 타이머
-          </button>
-          <div id="mockTimerWrap" class="mock-timer-wrap" style="display:none">
-            <div id="mockSubjectBtns" class="mock-subject-btns"></div>
-            <div id="mockPanel" class="mock-panel" style="display:none">
-              <p id="mockHint" class="mock-hint"></p>
-              <div id="mockTimerRing" class="mock-display">
-                <span id="mockH">00</span><span class="sep">:</span>
-                <span id="mockM">00</span><span class="sep">:</span>
-                <span id="mockS">00</span>
-              </div>
-              <div class="sw-btns" style="margin-top:8px">
-                <button id="mockStartBtn" class="btn-primary">시작</button>
-                <button id="mockResetBtn" class="btn-secondary">리셋</button>
+          <div class="manual-inline-wrap" id="mockOuterWrap">
+            <button class="manual-inline-toggle" id="mockTimerToggle">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              모의고사 타이머
+            </button>
+            <div id="mockTimerWrap" class="manual-inline-panel mock-inline-panel" style="display:none">
+              <div id="mockSubjectBtns" class="mock-subject-btns"></div>
+              <div id="mockPanel" style="display:none">
+                <p id="mockHint" class="mock-hint"></p>
+                <div id="mockTimerRing" class="mock-display">
+                  <span id="mockH">00</span><span class="sep">:</span>
+                  <span id="mockM">00</span><span class="sep">:</span>
+                  <span id="mockS">00</span>
+                </div>
+                <div class="sw-btns" style="margin-top:10px">
+                  <button id="mockStartBtn" class="btn-primary">시작</button>
+                  <button id="mockResetBtn" class="btn-secondary">리셋</button>
+                </div>
               </div>
             </div>
           </div>
