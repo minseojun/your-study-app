@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="StudyFlow"/>
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme:light)"/>
-  <meta name="theme-color" content="#111114"  media="(prefers-color-scheme:dark)"/>
+  <meta name="theme-color" content="#111114" media="(prefers-color-scheme:dark)"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <title>StudyFlow</title>
@@ -33,6 +34,32 @@
   <div id="focusToast"><span>⚠️</span><span>집중력이 흐트러졌어요!</span><button id="focusToastClose">✕</button></div>
   <div id="notifToast"><span id="notifIcon">🔔</span><span id="notifMsg"></span><button id="notifClose">✕</button></div>
 
+  <!-- 캘린더 일과 추가 모달 -->
+  <div id="calAddModalBackdrop" class="cal-modal-backdrop">
+    <div id="calAddModal" class="cal-modal">
+      <div class="cal-modal-header">
+        <h3>일과 추가</h3>
+        <span id="calAddDateLabel" class="cal-modal-date"></span>
+      </div>
+      <input type="text" id="calAddInput" class="cal-modal-input" placeholder="할 일 입력" maxlength="40" autocomplete="off"/>
+      <div class="chip-row" style="padding:0">
+        <span class="chip-label">과목</span>
+        <div id="calAddChips" style="display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none">
+          <button class="chip active" data-cat="국어">국어</button>
+          <button class="chip" data-cat="영어">영어</button>
+          <button class="chip" data-cat="수학">수학</button>
+          <button class="chip" data-cat="사회문화">사회문화</button>
+          <button class="chip" data-cat="생활과윤리">생활과윤리</button>
+        </div>
+      </div>
+      <div class="cal-modal-footer">
+        <button id="calAddCancel" class="btn-goal-cancel">취소</button>
+        <button id="calAddConfirm" class="btn-goal-save">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 주간 리포트 모달 -->
   <div id="weeklyReportBackdrop">
     <div id="weeklyReportModal" role="dialog" aria-modal="true">
       <div class="modal-header">
@@ -46,6 +73,7 @@
     </div>
   </div>
 
+  <!-- 세션 리포트 모달 -->
   <div id="modalBackdrop">
     <div id="modal" role="dialog" aria-modal="true">
       <div class="modal-header">
@@ -78,39 +106,7 @@
     </div>
   </div>
 
-  <div id="coachBackdrop">
-    <div id="coachModal" role="dialog" aria-modal="true">
-      <div class="coach-header">
-        <div class="coach-header-left">
-          <div class="coach-avatar">🤖</div>
-          <div class="coach-header-text">
-            <h2>AI 학습 전략가</h2>
-            <p>Claude · 취약 과목 & 수면 분석</p>
-          </div>
-        </div>
-        <button class="coach-close-btn" id="coachClose">✕</button>
-      </div>
-      <div class="coach-body">
-        <div class="coach-state" id="coachLoading"><div class="coach-spinner"></div><p>데이터를 심층 분석하는 중…</p></div>
-        <div class="coach-state" id="coachError" style="display:none"><span style="font-size:2rem">⚠️</span><p id="coachErrorMsg" style="color:var(--danger);font-size:.85rem;text-align:center;line-height:1.6;max-width:280px"></p></div>
-        <div id="coachResult" style="display:none">
-          <div class="coach-score-row">
-            <div class="coach-score-card"><div class="coach-score-num" id="scoreNum">—</div><div class="coach-score-label">집중 종합 점수</div></div>
-            <div class="coach-score-card"><div class="coach-score-num dday" id="coachDday">—</div><div class="coach-score-label">수능 D-Day</div></div>
-          </div>
-          <div id="coachSections"></div>
-          <div class="coach-mission"><p class="coach-mission-title">🎯 내일의 미션</p><p id="coachMissionText"></p></div>
-        </div>
-      </div>
-      <div class="coach-footer">
-        <button id="coachRefresh" class="btn-coach-refresh">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M12 7A5 5 0 1 1 7 2a5 5 0 0 1 3.5 1.5L12 2v4H8l1.5-1.5A3 3 0 1 0 10 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          분석 업데이트
-        </button>
-        <p class="coach-powered">Powered by Claude</p>
-      </div>
-    </div>
-  </div>
+  <div id="coachBackdrop" style="display:none"></div>
 
   <header id="appHeader">
     <div class="header-inner">
@@ -135,6 +131,48 @@
     <!-- ══ 오늘 탭 ══ -->
     <div id="tab-today" class="tab-panel active">
       <div class="tab-inner">
+
+        <section class="card">
+          <div class="card-header">
+            <h2 class="card-title">📅 주간 일과</h2>
+          </div>
+          <div id="calendarWrap"></div>
+          <div class="habit-section">
+            <button class="manual-inline-toggle" id="habitToggleBtn">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              반복 습관 관리
+            </button>
+            <div id="habitPanel" class="habit-panel" style="display:none">
+              <div id="habitList"></div>
+              <div class="habit-add-row">
+                <input type="text" id="habitInput" class="manual-field-input" placeholder="습관 이름 (예: 수학 인강)" maxlength="30" autocomplete="off"/>
+              </div>
+              <div class="chip-row" style="padding:0">
+                <span class="chip-label">과목</span>
+                <div id="habitCatChips" style="display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none">
+                  <button class="chip active" data-cat="국어">국어</button>
+                  <button class="chip" data-cat="영어">영어</button>
+                  <button class="chip" data-cat="수학">수학</button>
+                  <button class="chip" data-cat="사회문화">사회문화</button>
+                  <button class="chip" data-cat="생활과윤리">생활과윤리</button>
+                </div>
+              </div>
+              <div class="habit-days-row">
+                <span class="chip-label">요일</span>
+                <div class="habit-days">
+                  <button class="habit-day-btn" data-day="1">월</button>
+                  <button class="habit-day-btn" data-day="2">화</button>
+                  <button class="habit-day-btn" data-day="3">수</button>
+                  <button class="habit-day-btn" data-day="4">목</button>
+                  <button class="habit-day-btn" data-day="5">금</button>
+                  <button class="habit-day-btn" data-day="6">토</button>
+                  <button class="habit-day-btn" data-day="0">일</button>
+                </div>
+              </div>
+              <button id="habitAddBtn" class="btn-manual-add" style="margin-top:8px">습관 추가</button>
+            </div>
+          </div>
+        </section>
 
         <section class="card">
           <div class="card-header">
@@ -198,7 +236,6 @@
             <h2 class="card-title">집중 타이머</h2>
           </div>
 
-          <!-- 오늘 목표 -->
           <div class="goal-section">
             <div class="goal-header">
               <span class="goal-title">오늘 목표</span>
@@ -214,7 +251,6 @@
             </div>
           </div>
 
-          <!-- 타이머 디스플레이 -->
           <div id="swDisplay" class="sw-display">
             <span id="swHours">00</span><span class="sep">:</span>
             <span id="swMinutes">00</span><span class="sep">:</span>
@@ -222,7 +258,6 @@
           </div>
           <p class="sw-label">오늘 누적 <strong id="swAccum">0분</strong></p>
 
-          <!-- 과목 선택 -->
           <div class="chip-row timer-subject-row">
             <span class="chip-label">과목</span>
             <div id="timerCategoryChips">
@@ -234,16 +269,35 @@
             </div>
           </div>
 
-          <!-- 시작/종료 버튼 -->
           <div class="sw-btns">
             <button id="startStopBtn" class="btn-primary">시작</button>
             <button id="endBtn" class="btn-secondary" disabled>종료</button>
           </div>
 
-          <!-- 인강 모드 버튼 -->
           <button id="lectureModeBtn" class="btn-lecture-mode">📺 인강 시청</button>
 
-          <!-- 공부기록 수동 추가 (인라인) -->
+          <!-- 모의고사 타이머 -->
+          <button class="manual-inline-toggle" id="mockTimerToggle">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            모의고사 타이머
+          </button>
+          <div id="mockTimerWrap" class="mock-timer-wrap" style="display:none">
+            <div id="mockSubjectBtns" class="mock-subject-btns"></div>
+            <div id="mockPanel" class="mock-panel" style="display:none">
+              <p id="mockHint" class="mock-hint"></p>
+              <div id="mockTimerRing" class="mock-display">
+                <span id="mockH">00</span><span class="sep">:</span>
+                <span id="mockM">00</span><span class="sep">:</span>
+                <span id="mockS">00</span>
+              </div>
+              <div class="sw-btns" style="margin-top:8px">
+                <button id="mockStartBtn" class="btn-primary">시작</button>
+                <button id="mockResetBtn" class="btn-secondary">리셋</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 수동 기록 추가 -->
           <div class="manual-inline-wrap">
             <button class="manual-inline-toggle" id="manualToggleBtn">
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -265,7 +319,7 @@
                     <button class="chip" data-cat="생활과윤리">생활과윤리</button>
                   </div>
                 </div>
-                <div class="manual-field-group manual-time-group">
+                <div class="manual-field-group">
                   <label class="manual-field-label">시간</label>
                   <div class="manual-time-inputs">
                     <input type="number" id="manualHours" class="manual-time-num" min="0" max="23" placeholder="0">
@@ -299,8 +353,17 @@
 
         <section class="card">
           <div class="card-header">
+            <h2 class="card-title">📚 과목별 집중 시간대</h2>
+            <span class="badge muted">최근 30일</span>
+          </div>
+          <p class="heatmap-hint">어느 시간대에 어떤 과목을 공부했는지 확인해봐요</p>
+          <div id="subjectHeatmapGrid" class="subject-heatmap-grid"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
             <h2 class="card-title">🕐 시간대별 집중 히트맵</h2>
-            <span class="badge muted">최근 7일</span>
+            <span class="badge muted">최근 30일</span>
           </div>
           <p class="heatmap-hint">어느 시간대에 집중이 잘 되는지 확인해봐요</p>
           <div id="heatmapGrid" class="heatmap-grid"></div>
@@ -326,8 +389,7 @@
           <p class="heatmap-hint">취침/기상 기록을 기반으로 수면 시간을 분석해요</p>
           <canvas id="sleepChart" height="110"></canvas>
           <div id="sleepNoData" class="empty-state small">
-            <span>💤</span>
-            <p>취침/기상 버튼을 사용하면 수면 패턴이 표시돼요</p>
+            <span>💤</span><p>취침/기상 버튼을 사용하면 수면 패턴이 표시돼요</p>
           </div>
         </section>
 
@@ -352,10 +414,9 @@
             <div class="coach-avatar-sm">🤖</div>
             <div>
               <h2 class="card-title">AI 학습 코치</h2>
-              <p class="coach-inline-sub">Claude · 7일 누적 데이터 분석</p>
+              <p class="coach-inline-sub">Claude · 30일 누적 데이터 분석</p>
             </div>
           </div>
-
           <div id="inlineCoachState" class="coach-state" style="display:none"><div class="coach-spinner"></div><p>데이터 분석 중…</p></div>
           <div id="inlineCoachError" class="coach-inline-error" style="display:none">
             <span>⚠️</span><p id="inlineCoachErrorMsg"></p>
@@ -368,7 +429,6 @@
             <div id="inlineCoachSections"></div>
             <div class="coach-mission"><p class="coach-mission-title">🎯 내일의 미션</p><p id="inlineMissionText"></p></div>
           </div>
-
           <button id="coachRunBtn" class="btn-primary" style="margin-top:4px">🤖 지금 분석하기</button>
         </section>
       </div>
@@ -395,18 +455,7 @@
     </button>
   </nav>
 
-  <!-- ── JS 모듈 (순서 중요) ── -->
-  <script src="js/core.js"></script>
-  <script src="js/tasks.js"></script>
-  <script src="js/goals.js"></script>
-  <script src="js/timer.js"></script>
-  <script src="js/sleep.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/stats.js"></script>
-  <script src="js/report.js"></script>
-  <script src="js/manual.js"></script>
-  <script src="js/coach.js"></script>
-  <script src="js/main.js"></script>
+  <script src="script.js"></script>
   <script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script>
 </body>
 </html>
