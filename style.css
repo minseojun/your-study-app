@@ -255,28 +255,37 @@ ul#taskList::-webkit-scrollbar-thumb,ul#tomorrowList::-webkit-scrollbar-thumb{ba
 .progress-fill{height:100%;background:linear-gradient(90deg,#34c759,#30d158);border-radius:3px;width:0%;transition:width .4s ease}
 
 /* ══════════════════════════════════════════════════════════
-   주간 캘린더
+   주간 캘린더 스트립
    ══════════════════════════════════════════════════════════ */
-.cal-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;margin:0 -2px}
-.cal-scroll::-webkit-scrollbar{height:3px}
-.cal-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.cal-grid{display:flex;gap:8px;min-width:max-content;padding:2px}
-.cal-col{min-width:78px;flex-shrink:0;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--bg);padding:8px 7px;transition:border-color var(--tr)}
-.cal-col.cal-today{border-color:var(--accent);background:var(--accent-s)}
-body.night .cal-col.cal-today{background:#0d1f38}
-.cal-col-header{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--border-soft)}
-.cal-day-name{font-size:.65rem;font-weight:600;color:var(--text-3);letter-spacing:.05em}
-.cal-day-num{font-size:1.1rem;font-weight:600;color:var(--text-1);line-height:1}
-.cal-day-num.is-today{color:var(--accent)}
-.cal-day-time{font-size:.62rem;font-family:var(--mono);color:var(--accent);font-weight:500;min-height:14px}
-.cal-task-list{display:flex;flex-direction:column;gap:4px;min-height:28px}
-.cal-task-item{display:flex;align-items:flex-start;gap:4px;cursor:pointer;padding:2px 0}
-.cal-task-item.done .cal-task-text{text-decoration:line-through;color:var(--text-3)}
-.cal-cb{width:12px;height:12px;border-radius:3px;border:1.5px solid var(--border);flex-shrink:0;background:var(--card);transition:all var(--tr);margin-top:1px}
-.cal-cb.checked{background:var(--ok);border-color:var(--ok)}
-.cal-task-text{font-size:.67rem;color:var(--text-2);line-height:1.35;word-break:break-all}
-.cal-add-btn{width:100%;margin-top:6px;padding:4px 0;border:none;background:transparent;font-family:var(--font);font-size:.67rem;color:var(--text-3);cursor:pointer;border-radius:5px;transition:all var(--tr)}
-.cal-add-btn:hover{background:var(--border-soft);color:var(--accent)}
+.cal-unified-card{gap:12px}
+
+/* 스트립 스크롤 */
+.cal-strip-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2px;padding:2px 2px 4px}
+.cal-strip-scroll::-webkit-scrollbar{height:2px}
+.cal-strip-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.cal-strip{display:flex;gap:6px;min-width:max-content}
+
+/* 날짜 버튼 */
+.cal-day-btn{display:flex;flex-direction:column;align-items:center;gap:2px;width:44px;padding:7px 0 6px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--bg);cursor:pointer;transition:all var(--tr);-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.cal-day-btn:hover{border-color:var(--accent);background:var(--accent-s)}
+.cal-day-btn.is-today{border-color:var(--accent)}
+.cal-day-btn.is-selected{background:var(--accent);border-color:var(--accent)}
+.cal-day-btn.is-selected .cal-strip-day,
+.cal-day-btn.is-selected .cal-strip-num,
+.cal-day-btn.is-selected .cal-strip-time{color:#fff}
+.cal-strip-day{font-size:.6rem;font-weight:600;color:var(--text-3);letter-spacing:.04em;text-transform:uppercase}
+.cal-strip-num{font-size:1rem;font-weight:700;color:var(--text-1);line-height:1}
+.cal-day-btn.is-today:not(.is-selected) .cal-strip-num{color:var(--accent)}
+.cal-strip-time{font-size:.58rem;font-family:var(--mono);color:var(--accent);font-weight:500;min-height:12px;line-height:1}
+.cal-day-btn.is-selected .cal-strip-time{color:rgba(255,255,255,.85)}
+.cal-strip-dot{width:4px;height:4px;border-radius:50%;background:var(--ok);margin-top:1px}
+.cal-day-btn.is-selected .cal-strip-dot{background:#fff}
+
+/* 선택 날짜 패널 */
+.day-panel{border-top:1px solid var(--border-soft);padding-top:12px;display:flex;flex-direction:column;gap:12px}
+.day-panel-header{display:flex;flex-direction:column;gap:10px}
+.day-panel-title-row{display:flex;align-items:center;justify-content:space-between}
+.day-panel-date{font-size:.82rem;font-weight:600;color:var(--text-2)}
 
 /* 캘린더 추가 모달 */
 .cal-modal-backdrop{position:fixed;inset:0;z-index:9002;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(29,29,31,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);visibility:hidden !important;pointer-events:none;opacity:0;transition:opacity .22s,visibility .22s}
