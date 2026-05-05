@@ -510,3 +510,53 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
 }
 .lecture-panel-inner{display:flex;flex-direction:column;gap:10px}
 .timer-func-desc{font-size:.78rem;color:var(--text-2);line-height:1.5}
+
+/* ══════════════════════════════════════════════════════════
+   학교 시간표
+   ══════════════════════════════════════════════════════════ */
+.tt-table{width:100%;display:flex;flex-direction:column;gap:2px}
+.tt-header-row{display:grid;grid-template-columns:52px repeat(5,1fr);gap:2px;margin-bottom:2px}
+.tt-period-col{} /* 빈 왼쪽 헤더 */
+.tt-day-col{
+  text-align:center;font-size:.75rem;font-weight:700;
+  color:var(--text-2);padding:6px 0;border-radius:6px;
+  background:var(--bg);letter-spacing:.04em;
+}
+.tt-day-col.tt-today{background:var(--accent);color:#fff}
+
+.tt-row{display:grid;grid-template-columns:52px repeat(5,1fr);gap:2px}
+.tt-period-label{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;padding:6px 0;
+}
+.tt-period-name{font-size:.68rem;font-weight:600;color:var(--text-2)}
+.tt-time{font-size:.58rem;color:var(--text-3);font-family:var(--mono)}
+
+.tt-cell{
+  border-radius:6px;background:var(--bg);
+  border:1px solid var(--border-soft);overflow:hidden;
+  min-height:44px;display:flex;align-items:center;
+}
+.tt-cell.tt-today-col{background:var(--accent-s);border-color:rgba(0,113,227,.18)}
+.tt-input{
+  width:100%;height:100%;min-height:44px;
+  border:none;background:transparent;
+  font-family:var(--font);font-size:.72rem;font-weight:500;
+  color:var(--text-1);text-align:center;padding:4px 3px;
+  outline:none;cursor:pointer;resize:none;
+}
+.tt-input::placeholder{color:var(--text-3)}
+.tt-input:focus{background:var(--card);color:var(--accent);font-weight:600}
+body.night .tt-input:focus{background:var(--card)}
+
+.tt-break-row{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:5px 0;margin:2px 0;
+  border-radius:6px;background:var(--border-soft);
+}
+.tt-break-row span{font-size:.72rem;color:var(--text-3);font-weight:500}
+.tt-break-time{font-family:var(--mono);font-size:.65rem}
+
+/* 바텀 탭 5개 대응 */
+@media(max-width:400px){
+  .nav-item span{font-size:.6rem}
