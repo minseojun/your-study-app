@@ -510,3 +510,15 @@ body.night .hm-cell[data-lvl="4"]{background:#93c5fd}
 }
 .lecture-panel-inner{display:flex;flex-direction:column;gap:10px}
 .timer-func-desc{font-size:.78rem;color:var(--text-2);line-height:1.5}
+
+/* ══════════════════════════════════════════════════════════
+   시간표 탭
+   ══════════════════════════════════════════════════════════ */
+.timetable-grid{border-collapse:collapse;width:100%;min-width:300px}
+.tt-th{padding:8px 4px;text-align:center;font-size:.7rem;font-weight:600;color:var(--text-3);border-bottom:1.5px solid var(--border);white-space:nowrap}
+.tt-th-period{text-align:left;padding-left:8px;min-width:44px}
+.tt-period-label{padding:10px 8px;font-size:.78rem;font-weight:600;color:var(--text-2);white-space:nowrap;border-top:1px solid var(--border-soft)}
+.tt-cell{padding:7px 4px;border-top:1px solid var(--border-soft);min-width:42px;cursor:pointer;text-align:center;font-size:.78rem;color:var(--text-1);transition:background var(--tr);border-radius:0;-webkit-tap-highlight-color:transparent}
+.tt-cell:hover{background:var(--accent-s)}
+.tt-cell.tt-cell-filled{font-weight:600;color:var(--accent)}
+body.night .tt-cell.tt-cell-filled{color:#60a5fa}
