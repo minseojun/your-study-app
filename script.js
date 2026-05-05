@@ -42,7 +42,7 @@ function calcLiveScore(tMs, sess, dist, doneT, totalT, st) {
   if(tMs===0 && sess.length===0) return null;
   let score = 0;
   score += Math.min(40, Math.round(tMs/60000/120*40));
-  const longest = sess.length ? Math.max(...sess.map(s=>s.ms)) : 0;
+  const longest = sess.length ? Math.max(...sess.map(s=><s.ms>)) : 0;
   score += Math.min(20, Math.round(longest/60000/45*20));
   if(totalT>0) score += Math.round(doneT/totalT*20);
   const cats = Object.keys(st).filter(k=>st[k]>0).length;
@@ -182,14 +182,11 @@ function renderTomorrow(){
 }
 function postponeTask(idx){
   const t=todayTasks.splice(idx,1)[0];
-  // tomorrowTasks에 저장 (날짜 이월용)
   tomorrowTasks.push({text:t.text,cat:t.cat,done:false});
   lsSet(K.TODAY_TASKS,todayTasks); lsSet(K.TMRW_TASKS,tomorrowTasks);
-  // calTasks의 내일 날짜에도 저장 (캘린더 패널용)
   const tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   const tmrwStr=dateStrOf(tomorrow);
   const tmrwTasks=getTasksForDate(tmrwStr);
-  // 이미 있으면 중복 추가 방지
   if(!tmrwTasks.find(x=>x.text===t.text&&x.cat===t.cat)){
     tmrwTasks.push({text:t.text,cat:t.cat,done:false});
     saveCalTask(tmrwStr,tmrwTasks);
@@ -204,7 +201,6 @@ function addTask(){
     todayTasks.push({text,cat:selectedCat,done:false});
     lsSet(K.TODAY_TASKS,todayTasks);
   } else {
-    // calTasks의 non-habit 항목에만 추가
     const saved=calTasks[calSelectedDate]||[];
     saved.push({text,cat:selectedCat,done:false});
     calTasks[calSelectedDate]=saved;
@@ -244,7 +240,7 @@ function getTasksForDate(dateStr){
   const d=new Date(dateStr); const dow=d.getDay();
   const manual=calTasks[dateStr]||[];
   const habitTasks=habits.filter(h=>h.days.includes(dow)).map(h=>{
-    const saved=manual.find(m=>m.habitId===h.id);
+    const saved=manual.find(m=>m.habitId===<h.id>);
     return saved ? saved : {text:h.text,cat:h.cat,done:false,habitId:h.id};
   });
   const nonHabit=manual.filter(m=>!m.habitId);
@@ -253,7 +249,6 @@ function getTasksForDate(dateStr){
 
 function saveCalTask(dateStr,tasks){ calTasks[dateStr]=tasks; lsSet(K.CAL_TASKS,calTasks); }
 
-/* 캘린더 스트립 — 날짜 셀만, 클릭하면 아래 패널 업데이트 */
 function renderCalendar(){
   const wrap=document.getElementById('calendarWrap'); if(!wrap)return;
   const weeks=getWeekDates();
@@ -286,7 +281,6 @@ function renderCalendar(){
   });
 }
 
-/* 선택 날짜 패널 — 오늘/다른 날 모두 getTasksForDate 기반으로 통일 */
 function renderDayPanel(){
   const ds=calSelectedDate;
   const isToday=ds===todayStr();
@@ -297,17 +291,13 @@ function renderDayPanel(){
   const inp=document.getElementById('taskInput');
   if(inp) inp.placeholder=isToday?'할 일 추가':`${d.getMonth()+1}/${d.getDate()} 할 일 추가`;
 
-  // 오늘은 todayTasks + 습관, 다른 날은 calTasks + 습관 모두 합쳐서 렌더
   let tasks;
   if(isToday){
-    // 오늘의 습관(해당 요일)을 todayTasks에 없는 것만 추가해서 표시
     const dow=d.getDay();
     const habitTasks=habits.filter(h=>h.days.includes(dow)).map(h=>{
-      // todayTasks에 이미 같은 habitId가 있으면 그걸 쓰고, 없으면 새로 생성
-      const existing=todayTasks.find(t=>t.habitId===h.id);
+      const existing=todayTasks.find(t=>t.habitId===<h.id>);
       return existing || {text:h.text,cat:h.cat,done:false,habitId:h.id,_virtual:true};
     });
-    // todayTasks 중 habitId 없는 것 + 위에서 만든 habitTasks 합치기
     tasks=[...habitTasks, ...todayTasks.filter(t=>!t.habitId)];
   } else {
     tasks=getTasksForDate(ds);
@@ -336,7 +326,6 @@ function buildDayItem(task,idx,dateStr,isToday){
   cb.addEventListener('change',()=>{
     if(isToday){
       if(task.habitId){
-        // 가상 habitTask면 todayTasks에 실체화
         const existing=todayTasks.findIndex(t=>t.habitId===task.habitId);
         if(existing>=0){ todayTasks[existing].done=!todayTasks[existing].done; }
         else { todayTasks.push({text:task.text,cat:task.cat,done:!task.done,habitId:task.habitId}); }
@@ -346,20 +335,17 @@ function buildDayItem(task,idx,dateStr,isToday){
         lsSet(K.TODAY_TASKS,todayTasks);
       }
     } else {
-      // calTasks에 완료 상태 저장
       const saved=calTasks[dateStr]||[];
       if(task.habitId){
         const hi=saved.findIndex(m=>m.habitId===task.habitId);
         if(hi>=0) saved[hi].done=!saved[hi].done;
         else saved.push({...task,done:!task.done});
       } else {
-        // non-habit: idx 기준으로 찾기 (habitTasks 제외한 nonHabit 인덱스)
         const nonHabitSaved=saved.filter(m=>!m.habitId);
         const dow=new Date(dateStr).getDay();
         const habitCount=habits.filter(h=>h.days.includes(dow)).length;
         const nonHabitIdx=idx-habitCount;
         if(nonHabitIdx>=0&&nonHabitSaved[nonHabitIdx]) nonHabitSaved[nonHabitIdx].done=!task.done;
-        // 전체 calTasks 재구성
         const habitSaved=saved.filter(m=>m.habitId);
         calTasks[dateStr]=[...habitSaved,...nonHabitSaved];
       }
@@ -376,7 +362,6 @@ function buildDayItem(task,idx,dateStr,isToday){
   const badge=document.createElement('span'); badge.className='cat-badge'; badge.textContent=task.cat||'국어'; li.appendChild(badge);
   const acts=document.createElement('div'); acts.className='task-actions';
   if(!task.habitId){
-    // 습관 항목은 삭제 불가 (습관 관리에서 삭제)
     const db=document.createElement('button'); db.className='del'; db.title='삭제'; db.innerHTML=S_DEL;
     db.addEventListener('click',()=>{
       if(isToday){
@@ -400,7 +385,6 @@ function buildDayItem(task,idx,dateStr,isToday){
   li.appendChild(acts);
   return li;
 }
-// 이전 buildCalItem 호환용
 function buildCalItem(task,idx,dateStr){ return buildDayItem(task,idx,dateStr,dateStr===todayStr()); }
 
 function openCalAddModal(dateStr){
@@ -460,7 +444,6 @@ document.getElementById('habitAddBtn')?.addEventListener('click',()=>{
   document.querySelectorAll('.habit-day-btn').forEach(b=>b.classList.remove('active'));
   renderHabits(); renderCalendar(); renderDayPanel();
   showNotif(`"${text}" 습관 등록됐어요`,'🔁');
-  // 폼 닫기
   const form=document.getElementById('habitAddForm');
   const btn=document.getElementById('habitAddToggleBtn');
   const outer=document.getElementById('habitOuterWrap');
@@ -471,7 +454,6 @@ document.getElementById('habitAddBtn')?.addEventListener('click',()=>{
 document.querySelectorAll('.habit-day-btn').forEach(btn=>btn.addEventListener('click',()=>btn.classList.toggle('active')));
 document.getElementById('habitCatChips')?.addEventListener('click',e=>{ const chip=e.target.closest('.chip'); if(!chip)return; document.querySelectorAll('#habitCatChips .chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); });
 
-/* 반복 습관 패널 토글 */
 document.getElementById('habitAddToggleBtn')?.addEventListener('click',()=>{
   const form  = document.getElementById('habitAddForm');
   const btn   = document.getElementById('habitAddToggleBtn');
@@ -526,7 +508,6 @@ let sessionStart          = lsGet('sf_session_start')||null;
 let sessionElapsedAtStart = lsGet('sf_session_elapsed_at_start');
 if(sessionElapsedAtStart!==null) sessionElapsedAtStart=Number(sessionElapsedAtStart);
 
-/* 앱 재시작 시 미완료 세션 복원 */
 (()=>{
   if(sessionElapsedAtStart===null) return;
   const bgStart=lsGet('sf_bg_start'), bgElapsed=lsGet('sf_bg_elapsed');
@@ -615,7 +596,6 @@ document.getElementById('endBtn').addEventListener('click',endSession);
 document.getElementById('modalClose').addEventListener('click',()=>document.getElementById('modalBackdrop').classList.remove('show'));
 document.getElementById('modalContinue').addEventListener('click',()=>document.getElementById('modalBackdrop').classList.remove('show'));
 
-/* 집중 오버레이 */
 const focusOverlay=document.getElementById('focusOverlay');
 let lectureMode=false;
 function showOverlay(){
@@ -717,21 +697,17 @@ function finishMockTimer(){
   if(mockSubject.cat&&SUBJECTS.includes(mockSubject.cat)){
     subjectTime[mockSubject.cat]=(subjectTime[mockSubject.cat]||0)+ms;
     totalMs+=ms; elapsed+=ms;
-    // sessions에도 추가 → 히트맵 반영
     sessions=[...sessions,{ms, startHour:new Date().getHours(), cat:mockSubject.cat, mock:true}];
     saveTimerState(); updateAccumLabel(); renderGoalBars(); updateLiveScore();
   }
   showNotif(`${mockSubject.label} 모의고사 완료! ${mockSubject.minutes}분 기록됐어요 🎉`,'📝');
-  // 모의고사 패널 닫기 및 상태 초기화
   const panel=document.getElementById('mockPanel'); if(panel)panel.style.display='none';
-  // 타이머 wrap도 닫기
   const wrap=document.getElementById('mockTimerWrap');
   const outer=document.getElementById('mockOuterWrap');
   const btn=document.getElementById('mockTimerToggle');
   if(wrap) wrap.style.display='none';
   if(btn)  btn.classList.remove('open');
   if(outer) outer.classList.remove('open');
-  // 기능 탭도 닫기
   switchTimerTab(null);
   mockSubject=null; mockRemaining=0;
   document.querySelectorAll('.mock-chip').forEach(c=>c.classList.remove('active'));
@@ -769,15 +745,15 @@ let subjectChartInst=null;
 function showReport(){
   document.getElementById('rTotalTime').textContent=msToReadable(totalMs)||'0초';
   document.getElementById('rSessions').textContent=sessions.length+'회';
-  const longest=sessions.length?Math.max(...sessions.map(s=>s.ms)):0;
+  const longest=sessions.length?Math.max(...sessions.map(s=><s.ms>)):0;
   document.getElementById('rLongest').textContent=msToReadable(longest)||'0초';
   const rDist=document.getElementById('rDistractions');
   rDist.innerHTML=`<button class="dist-adj-btn" id="distMinus">−</button><span id="distCount">${distractions}</span>회<button class="dist-adj-btn" id="distPlus">+</button>`;
   document.getElementById('distMinus').addEventListener('click',()=>{ if(distractions>0){distractions--;saveTimerState();document.getElementById('distCount').textContent=distractions;updateLiveScore();} });
   document.getElementById('distPlus').addEventListener('click',()=>{ distractions++;saveTimerState();document.getElementById('distCount').textContent=distractions;updateLiveScore(); });
   const timeline=document.getElementById('sessionTimeline'); timeline.innerHTML='';
-  const maxMs=sessions.length?Math.max(...sessions.map(s=>s.ms)):1;
-  sessions.forEach((s,i)=>{ timeline.innerHTML+=`<div class="bar-row"><span class="bar-lbl">#${i+1}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(s.ms/maxMs*100)}%"></div></div><span class="bar-time">${msToReadable(s.ms)}</span></div>`; });
+  const maxMs=sessions.length?Math.max(...sessions.map(s=><s.ms>)):1;
+  sessions.forEach((s,i)=>{ timeline.innerHTML+=`<div class="bar-row"><span class="bar-lbl">#${i+1}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(<s.ms/maxMs*100>)}%"></div></div><span class="bar-time">${msToReadable(<s.ms>)}</span></div>`; });
   document.getElementById('aiFeedback').textContent='';
   document.getElementById('modalBackdrop').classList.add('show');
   const subEntries=Object.entries(subjectTime).filter(([,v])=>v>0);
@@ -810,7 +786,7 @@ function renderWeeklyStats(){
 
 function renderHeatmap(){
   const map=new Array(24).fill(0);
-  getHistoryWithToday().forEach(day=>(day.sessions||[]).forEach(s=>map[s.startHour]+=s.ms));
+  getHistoryWithToday().forEach(day=>(day.sessions||[]).forEach(s=>map[s.startHour]+=<s.ms>));
   const grid=document.getElementById('heatmapGrid'), maxVal=Math.max(...map,1); grid.innerHTML='';
   map.forEach((ms,h)=>{
     const cell=document.createElement('div'); cell.className='hm-cell';
@@ -824,11 +800,10 @@ function renderHeatmap(){
 function renderSubjectHeatmap(){
   const container=document.getElementById('subjectHeatmapGrid'); if(!container)return;
   container.innerHTML='';
-  // 2시간 버킷으로 집계 (12칸)
   const subMap={};
   SUBJECTS.forEach(sub=>{subMap[sub]=new Array(12).fill(0);});
   getHistoryWithToday().forEach(day=>(day.sessions||[]).forEach(s=>{
-    if(s.cat&&subMap[s.cat]) subMap[s.cat][Math.floor(s.startHour/2)]+=s.ms;
+    if(s.cat&&subMap[s.cat]) subMap[s.cat][Math.floor(s.startHour/2)]+=<s.ms>;
   }));
 
   SUBJECTS.forEach(sub=>{
@@ -850,7 +825,6 @@ function renderSubjectHeatmap(){
     row.appendChild(cells); container.appendChild(row);
   });
 
-  // 시간 레이블
   const labelRow=document.createElement('div'); labelRow.className='subject-hm-row';
   const emptyLbl=document.createElement('span'); emptyLbl.className='subject-hm-label'; labelRow.appendChild(emptyLbl);
   const labelCells=document.createElement('div'); labelCells.className='subject-hm-cells';
@@ -900,7 +874,6 @@ document.getElementById('weeklyReportBackdrop').addEventListener('click',e=>{ if
 /* ══════════════════════════════════════════════════════════
    13. 수동 기록 추가
    ══════════════════════════════════════════════════════════ */
-/* ── 타이머 기능 탭 전환 ── */
 let activeTimerTab = null;
 
 function switchTimerTab(tab){
@@ -911,9 +884,7 @@ function switchTimerTab(tab){
     if(btn)   btn.classList.toggle('active', tab===t);
   });
   activeTimerTab=tab;
-  // 모의고사 탭 닫을 때 타이머 일시정지
   if(tab!=='mock' && mockRunning) pauseMockTimer();
-  // 인강 탭 닫을 때 모드 해제
   if(tab!=='lecture' && lectureMode){ lectureMode=false; updateLectureModeBtn(); }
 }
 
@@ -1033,93 +1004,119 @@ renderDayPanel();
 if(window._needChipSync){ syncSubjectChips(selectedCat); window._needChipSync=false; }
 if(running) tick();
 
-/* Timetable tab: render grid, handle clicks, persist to localStorage */
+/* ══════════════════════════════════════════════════════════
+   16. 시간표 탭 (1~7교시)
+   ══════════════════════════════════════════════════════════ */
 (function(){
-  const TIMETABLE_KEY = 'TIMETABLE_V1';
-  const hours = Array.from({length:22-8+1},(_,i)=>8+i); // 8..22
-  const days = ['월','화','수','목','금','토','일'];
+  const TIMETABLE_KEY = 'TIMETABLE_V2';
+  const PERIODS = [1,2,3,4,5,6,7];
+  const DAY_LABELS = ['월','화','수','목','금','토','일'];
 
-  function createNavButton(){
-    const bottomNav = document.getElementById('bottomNav');
-    if(!bottomNav) return;
-    if(bottomNav.querySelector('[data-tab="timetable"]')) return;
-    const btn = document.createElement('button');
-    btn.className = 'nav-item';
-    btn.setAttribute('data-tab','timetable');
-    btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="4" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M7 8h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>시간표</span>';
-    bottomNav.appendChild(btn);
-    btn.addEventListener('click', ()=> showTab('timetable'));
-  }
+  function buildTable(){
+    const inner = document.getElementById('timetableTabInner');
+    if(!inner || inner.querySelector('.card')) return;
 
-  function createTabPanel(){
-    const appMain = document.getElementById('appMain');
-    if(!appMain || document.getElementById('tab-timetable')) return;
-
-    const panel = document.createElement('div');
-    panel.id = 'tab-timetable';
-    panel.className = 'tab-panel';
-
-    const inner = document.createElement('div'); inner.className='tab-inner';
-    const card = document.createElement('section'); card.className='card';
-    const header = document.createElement('div'); header.className='card-header';
-    header.innerHTML = '<h2 class="card-title">📅 시간표</h2><span class="badge muted">수동 입력</span>';
+    const card = document.createElement('section'); card.className = 'card';
+    const header = document.createElement('div'); header.className = 'card-header';
+    header.innerHTML = '<h2 class="card-title">📅 시간표</h2><span class="badge muted">셀을 눌러 입력</span>';
     card.appendChild(header);
 
-    const tableWrap = document.createElement('div'); tableWrap.style.overflowX='auto';
-    const table = document.createElement('table'); table.className='timetable-grid'; table.style.width='100%'; table.style.borderCollapse='collapse';
+    const tableWrap = document.createElement('div');
+    tableWrap.style.cssText = 'overflow-x:auto;-webkit-overflow-scrolling:touch';
+    const table = document.createElement('table');
+    table.className = 'timetable-grid';
 
     const thead = document.createElement('thead');
     const trHead = document.createElement('tr');
-    trHead.innerHTML = '<th style="text-align:left;padding:8px 10px">시간</th>' + days.map(d=>`<th style="padding:8px 10px;text-align:center">${d}</th>`).join('');
-    thead.appendChild(trHead); table.appendChild(thead);
+    trHead.innerHTML = '<th class="tt-th tt-th-period">교시</th>' +
+      DAY_LABELS.map(d => `<th class="tt-th">${d}</th>`).join('');
+    thead.appendChild(trHead);
+    table.appendChild(thead);
 
-    const tbody=document.createElement('tbody');
-    hours.forEach(h=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML = `<td style="padding:8px 10px;font-weight:600">${String(h).padStart(2,'0')}:00</td>` +
-        days.map((d,dayIdx)=>`<td class="tt-cell" data-day="${dayIdx}" data-hour="${h}" style="padding:6px 8px;border-top:1px solid var(--border-soft);min-width:80px;cursor:pointer"></td>`).join('');
+    const tbody = document.createElement('tbody');
+    PERIODS.forEach(p => {
+      const tr = document.createElement('tr');
+      const periodTd = document.createElement('td');
+      periodTd.className = 'tt-period-label';
+      periodTd.textContent = `${p}교시`;
+      tr.appendChild(periodTd);
+      DAY_LABELS.forEach((_, dayIdx) => {
+        const td = document.createElement('td');
+        td.className = 'tt-cell';
+        td.dataset.period = p;
+        td.dataset.day = dayIdx;
+        tr.appendChild(td);
+      });
       tbody.appendChild(tr);
     });
-    table.appendChild(tbody); tableWrap.appendChild(table); card.appendChild(tableWrap); inner.appendChild(card); panel.appendChild(inner);
-    appMain.appendChild(panel);
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    card.appendChild(tableWrap);
+    inner.appendChild(card);
 
-    panel.addEventListener('click', (e)=>{
+    table.addEventListener('click', e => {
       const cell = e.target.closest('.tt-cell'); if(!cell) return;
-      const day = cell.getAttribute('data-day'), hour = cell.getAttribute('data-hour'), key = `${hour}-${day}`;
-      const prev = (lsGet && lsGet(TIMETABLE_KEY) || {})[key] || '';
-      const value = prompt('과목명을 입력하세요 (빈칸은 삭제)', prev);
-      if(value===null) return;
-      const store = lsGet ? (lsGet(TIMETABLE_KEY)||{}) : JSON.parse(localStorage.getItem(TIMETABLE_KEY)||'{}');
-      if(value.trim()===''){ delete store[key]; cell.textContent=''; }
-      else { store[key]=value.trim(); cell.textContent = value.trim(); }
-      if(lsSet) lsSet(TIMETABLE_KEY, store); else localStorage.setItem(TIMETABLE_KEY, JSON.stringify(store));
+      openTTEdit(cell);
     });
   }
 
   function renderTimetable(){
-    const store = lsGet ? (lsGet(TIMETABLE_KEY)||{}) : JSON.parse(localStorage.getItem(TIMETABLE_KEY)||'{}');
-    document.querySelectorAll('.tt-cell').forEach(cell=>{
-      const key = `${cell.getAttribute('data-hour')}-${cell.getAttribute('data-day')}`;
-      cell.textContent = store[key] || '';
+    const store = lsGet(TIMETABLE_KEY) || {};
+    document.querySelectorAll('.tt-cell').forEach(cell => {
+      const key = `${cell.dataset.period}-${cell.dataset.day}`;
+      const val = store[key] || '';
+      cell.textContent = val;
+      cell.classList.toggle('tt-cell-filled', val !== '');
     });
   }
 
-  function showTab(tab){
-    document.querySelectorAll('#bottomNav .nav-item').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab) );
-    // hide all standard panels
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    if(tab==='timetable'){ const el=document.getElementById('tab-timetable'); if(el) el.classList.add('active'); }
-    else { const el = document.getElementById(`tab-${tab}`); if(el) el.classList.add('active'); }
+  let _editCell = null;
+  function openTTEdit(cell){
+    _editCell = cell;
+    const p = cell.dataset.period, d = parseInt(cell.dataset.day);
+    document.getElementById('ttEditLabel').textContent = `${p}교시 · ${DAY_LABELS[d]}요일`;
+    const store = lsGet(TIMETABLE_KEY) || {};
+    const input = document.getElementById('ttEditInput');
+    input.value = store[`${p}-${d}`] || '';
+    const bd = document.getElementById('ttEditBackdrop');
+    bd.style.display = 'flex';
+    requestAnimationFrame(() => bd.classList.add('show'));
+    setTimeout(() => input.focus(), 80);
   }
+
+  function closeTTEdit(){
+    const bd = document.getElementById('ttEditBackdrop'); if(!bd) return;
+    bd.classList.remove('show');
+    setTimeout(() => { bd.style.display = 'none'; }, 240);
+    _editCell = null;
+  }
+
+  function saveTTEdit(del){
+    if(!_editCell) return;
+    const p = _editCell.dataset.period, d = _editCell.dataset.day, key = `${p}-${d}`;
+    const store = lsGet(TIMETABLE_KEY) || {};
+    const val = document.getElementById('ttEditInput').value.trim();
+    if(del || !val){ delete store[key]; }
+    else { store[key] = val; }
+    lsSet(TIMETABLE_KEY, store);
+    renderTimetable();
+    closeTTEdit();
+  }
+
+  document.getElementById('ttEditBackdrop')?.addEventListener('click', e => {
+    if(e.target === document.getElementById('ttEditBackdrop')) closeTTEdit();
+  });
+  document.getElementById('ttEditCancel')?.addEventListener('click', closeTTEdit);
+  document.getElementById('ttEditDelete')?.addEventListener('click', () => saveTTEdit(true));
+  document.getElementById('ttEditConfirm')?.addEventListener('click', () => saveTTEdit(false));
+  document.getElementById('ttEditInput')?.addEventListener('keydown', e => {
+    if(e.key === 'Enter') saveTTEdit(false);
+    if(e.key === 'Escape') closeTTEdit();
+  });
 
   function init(){
-    try{ createNavButton(); createTabPanel(); renderTimetable(); }catch(e){ console.error('Timetable init failed', e); }
-    // ensure clicking other nav hides timetable
-    document.getElementById('bottomNav')?.addEventListener('click', (e)=>{
-      const btn = e.target.closest('.nav-item'); if(!btn) return;
-      const tab = btn.getAttribute('data-tab'); if(tab && tab!=='timetable'){ const tt=document.getElementById('tab-timetable'); if(tt) tt.classList.remove('active'); }
-    });
+    try{ buildTable(); renderTimetable(); }catch(e){ console.error('Timetable init failed', e); }
   }
 
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
