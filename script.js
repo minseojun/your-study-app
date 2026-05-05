@@ -1033,93 +1033,119 @@ renderDayPanel();
 if(window._needChipSync){ syncSubjectChips(selectedCat); window._needChipSync=false; }
 if(running) tick();
 
-/* Timetable tab: render grid, handle clicks, persist to localStorage */
+/* ══════════════════════════════════════════════════════════
+   16. 시간표 탭 (1~7교시)
+   ══════════════════════════════════════════════════════════ */
 (function(){
-  const TIMETABLE_KEY = 'TIMETABLE_V1';
-  const hours = Array.from({length:22-8+1},(_,i)=>8+i); // 8..22
-  const days = ['월','화','수','목','금','토','일'];
+  const TIMETABLE_KEY = 'TIMETABLE_V2';
+  const PERIODS = [1,2,3,4,5,6,7];
+  const DAY_LABELS = ['월','화','수','목','금','토','일'];
 
-  function createNavButton(){
-    const bottomNav = document.getElementById('bottomNav');
-    if(!bottomNav) return;
-    if(bottomNav.querySelector('[data-tab="timetable"]')) return;
-    const btn = document.createElement('button');
-    btn.className = 'nav-item';
-    btn.setAttribute('data-tab','timetable');
-    btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="4" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M7 8h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>시간표</span>';
-    bottomNav.appendChild(btn);
-    btn.addEventListener('click', ()=> showTab('timetable'));
-  }
+  function buildTable(){
+    const inner = document.getElementById('timetableTabInner');
+    if(!inner || inner.querySelector('.card')) return;
 
-  function createTabPanel(){
-    const appMain = document.getElementById('appMain');
-    if(!appMain || document.getElementById('tab-timetable')) return;
-
-    const panel = document.createElement('div');
-    panel.id = 'tab-timetable';
-    panel.className = 'tab-panel';
-
-    const inner = document.createElement('div'); inner.className='tab-inner';
-    const card = document.createElement('section'); card.className='card';
-    const header = document.createElement('div'); header.className='card-header';
-    header.innerHTML = '<h2 class="card-title">📅 시간표</h2><span class="badge muted">수동 입력</span>';
+    const card = document.createElement('section'); card.className = 'card';
+    const header = document.createElement('div'); header.className = 'card-header';
+    header.innerHTML = '<h2 class="card-title">📅 시간표</h2><span class="badge muted">셀을 눌러 입력</span>';
     card.appendChild(header);
 
-    const tableWrap = document.createElement('div'); tableWrap.style.overflowX='auto';
-    const table = document.createElement('table'); table.className='timetable-grid'; table.style.width='100%'; table.style.borderCollapse='collapse';
+    const tableWrap = document.createElement('div');
+    tableWrap.style.cssText = 'overflow-x:auto;-webkit-overflow-scrolling:touch';
+    const table = document.createElement('table');
+    table.className = 'timetable-grid';
 
     const thead = document.createElement('thead');
     const trHead = document.createElement('tr');
-    trHead.innerHTML = '<th style="text-align:left;padding:8px 10px">시간</th>' + days.map(d=>`<th style="padding:8px 10px;text-align:center">${d}</th>`).join('');
-    thead.appendChild(trHead); table.appendChild(thead);
+    trHead.innerHTML = '<th class="tt-th tt-th-period">교시</th>' +
+      DAY_LABELS.map(d => `<th class="tt-th">${d}</th>`).join('');
+    thead.appendChild(trHead);
+    table.appendChild(thead);
 
-    const tbody=document.createElement('tbody');
-    hours.forEach(h=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML = `<td style="padding:8px 10px;font-weight:600">${String(h).padStart(2,'0')}:00</td>` +
-        days.map((d,dayIdx)=>`<td class="tt-cell" data-day="${dayIdx}" data-hour="${h}" style="padding:6px 8px;border-top:1px solid var(--border-soft);min-width:80px;cursor:pointer"></td>`).join('');
+    const tbody = document.createElement('tbody');
+    PERIODS.forEach(p => {
+      const tr = document.createElement('tr');
+      const periodTd = document.createElement('td');
+      periodTd.className = 'tt-period-label';
+      periodTd.textContent = `${p}교시`;
+      tr.appendChild(periodTd);
+      DAY_LABELS.forEach((_, dayIdx) => {
+        const td = document.createElement('td');
+        td.className = 'tt-cell';
+        td.dataset.period = p;
+        td.dataset.day = dayIdx;
+        tr.appendChild(td);
+      });
       tbody.appendChild(tr);
     });
-    table.appendChild(tbody); tableWrap.appendChild(table); card.appendChild(tableWrap); inner.appendChild(card); panel.appendChild(inner);
-    appMain.appendChild(panel);
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    card.appendChild(tableWrap);
+    inner.appendChild(card);
 
-    panel.addEventListener('click', (e)=>{
+    table.addEventListener('click', e => {
       const cell = e.target.closest('.tt-cell'); if(!cell) return;
-      const day = cell.getAttribute('data-day'), hour = cell.getAttribute('data-hour'), key = `${hour}-${day}`;
-      const prev = (lsGet && lsGet(TIMETABLE_KEY) || {})[key] || '';
-      const value = prompt('과목명을 입력하세요 (빈칸은 삭제)', prev);
-      if(value===null) return;
-      const store = lsGet ? (lsGet(TIMETABLE_KEY)||{}) : JSON.parse(localStorage.getItem(TIMETABLE_KEY)||'{}');
-      if(value.trim()===''){ delete store[key]; cell.textContent=''; }
-      else { store[key]=value.trim(); cell.textContent = value.trim(); }
-      if(lsSet) lsSet(TIMETABLE_KEY, store); else localStorage.setItem(TIMETABLE_KEY, JSON.stringify(store));
+      openTTEdit(cell);
     });
   }
 
   function renderTimetable(){
-    const store = lsGet ? (lsGet(TIMETABLE_KEY)||{}) : JSON.parse(localStorage.getItem(TIMETABLE_KEY)||'{}');
-    document.querySelectorAll('.tt-cell').forEach(cell=>{
-      const key = `${cell.getAttribute('data-hour')}-${cell.getAttribute('data-day')}`;
-      cell.textContent = store[key] || '';
+    const store = lsGet(TIMETABLE_KEY) || {};
+    document.querySelectorAll('.tt-cell').forEach(cell => {
+      const key = `${cell.dataset.period}-${cell.dataset.day}`;
+      const val = store[key] || '';
+      cell.textContent = val;
+      cell.classList.toggle('tt-cell-filled', val !== '');
     });
   }
 
-  function showTab(tab){
-    document.querySelectorAll('#bottomNav .nav-item').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab) );
-    // hide all standard panels
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    if(tab==='timetable'){ const el=document.getElementById('tab-timetable'); if(el) el.classList.add('active'); }
-    else { const el = document.getElementById(`tab-${tab}`); if(el) el.classList.add('active'); }
+  let _editCell = null;
+  function openTTEdit(cell){
+    _editCell = cell;
+    const p = cell.dataset.period, d = parseInt(cell.dataset.day);
+    document.getElementById('ttEditLabel').textContent = `${p}교시 · ${DAY_LABELS[d]}요일`;
+    const store = lsGet(TIMETABLE_KEY) || {};
+    const input = document.getElementById('ttEditInput');
+    input.value = store[`${p}-${d}`] || '';
+    const bd = document.getElementById('ttEditBackdrop');
+    bd.style.display = 'flex';
+    requestAnimationFrame(() => bd.classList.add('show'));
+    setTimeout(() => input.focus(), 80);
   }
+
+  function closeTTEdit(){
+    const bd = document.getElementById('ttEditBackdrop'); if(!bd) return;
+    bd.classList.remove('show');
+    setTimeout(() => { bd.style.display = 'none'; }, 240);
+    _editCell = null;
+  }
+
+  function saveTTEdit(del){
+    if(!_editCell) return;
+    const p = _editCell.dataset.period, d = _editCell.dataset.day, key = `${p}-${d}`;
+    const store = lsGet(TIMETABLE_KEY) || {};
+    const val = document.getElementById('ttEditInput').value.trim();
+    if(del || !val){ delete store[key]; }
+    else { store[key] = val; }
+    lsSet(TIMETABLE_KEY, store);
+    renderTimetable();
+    closeTTEdit();
+  }
+
+  document.getElementById('ttEditBackdrop')?.addEventListener('click', e => {
+    if(e.target === document.getElementById('ttEditBackdrop')) closeTTEdit();
+  });
+  document.getElementById('ttEditCancel')?.addEventListener('click', closeTTEdit);
+  document.getElementById('ttEditDelete')?.addEventListener('click', () => saveTTEdit(true));
+  document.getElementById('ttEditConfirm')?.addEventListener('click', () => saveTTEdit(false));
+  document.getElementById('ttEditInput')?.addEventListener('keydown', e => {
+    if(e.key === 'Enter') saveTTEdit(false);
+    if(e.key === 'Escape') closeTTEdit();
+  });
 
   function init(){
-    try{ createNavButton(); createTabPanel(); renderTimetable(); }catch(e){ console.error('Timetable init failed', e); }
-    // ensure clicking other nav hides timetable
-    document.getElementById('bottomNav')?.addEventListener('click', (e)=>{
-      const btn = e.target.closest('.nav-item'); if(!btn) return;
-      const tab = btn.getAttribute('data-tab'); if(tab && tab!=='timetable'){ const tt=document.getElementById('tab-timetable'); if(tt) tt.classList.remove('active'); }
-    });
+    try{ buildTable(); renderTimetable(); }catch(e){ console.error('Timetable init failed', e); }
   }
 
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
