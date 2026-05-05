@@ -1032,3 +1032,94 @@ renderCalendar();
 renderDayPanel();
 if(window._needChipSync){ syncSubjectChips(selectedCat); window._needChipSync=false; }
 if(running) tick();
+
+/* Timetable tab: render grid, handle clicks, persist to localStorage */
+(function(){
+  const TIMETABLE_KEY = 'TIMETABLE_V1';
+  const hours = Array.from({length:22-8+1},(_,i)=>8+i); // 8..22
+  const days = ['월','화','수','목','금','토','일'];
+
+  function createNavButton(){
+    const bottomNav = document.getElementById('bottomNav');
+    if(!bottomNav) return;
+    if(bottomNav.querySelector('[data-tab="timetable"]')) return;
+    const btn = document.createElement('button');
+    btn.className = 'nav-item';
+    btn.setAttribute('data-tab','timetable');
+    btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="4" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M7 8h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>시간표</span>';
+    bottomNav.appendChild(btn);
+    btn.addEventListener('click', ()=> showTab('timetable'));
+  }
+
+  function createTabPanel(){
+    const appMain = document.getElementById('appMain');
+    if(!appMain || document.getElementById('tab-timetable')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'tab-timetable';
+    panel.className = 'tab-panel';
+
+    const inner = document.createElement('div'); inner.className='tab-inner';
+    const card = document.createElement('section'); card.className='card';
+    const header = document.createElement('div'); header.className='card-header';
+    header.innerHTML = '<h2 class="card-title">📅 시간표</h2><span class="badge muted">수동 입력</span>';
+    card.appendChild(header);
+
+    const tableWrap = document.createElement('div'); tableWrap.style.overflowX='auto';
+    const table = document.createElement('table'); table.className='timetable-grid'; table.style.width='100%'; table.style.borderCollapse='collapse';
+
+    const thead = document.createElement('thead');
+    const trHead = document.createElement('tr');
+    trHead.innerHTML = '<th style="text-align:left;padding:8px 10px">시간</th>' + days.map(d=>`<th style="padding:8px 10px;text-align:center">${d}</th>`).join('');
+    thead.appendChild(trHead); table.appendChild(thead);
+
+    const tbody=document.createElement('tbody');
+    hours.forEach(h=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td style="padding:8px 10px;font-weight:600">${String(h).padStart(2,'0')}:00</td>` +
+        days.map((d,dayIdx)=>`<td class="tt-cell" data-day="${dayIdx}" data-hour="${h}" style="padding:6px 8px;border-top:1px solid var(--border-soft);min-width:80px;cursor:pointer"></td>`).join('');
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); tableWrap.appendChild(table); card.appendChild(tableWrap); inner.appendChild(card); panel.appendChild(inner);
+    appMain.appendChild(panel);
+
+    panel.addEventListener('click', (e)=>{
+      const cell = e.target.closest('.tt-cell'); if(!cell) return;
+      const day = cell.getAttribute('data-day'), hour = cell.getAttribute('data-hour'), key = `${hour}-${day}`;
+      const prev = (lsGet && lsGet(TIMETABLE_KEY) || {})[key] || '';
+      const value = prompt('과목명을 입력하세요 (빈칸은 삭제)', prev);
+      if(value===null) return;
+      const store = lsGet ? (lsGet(TIMETABLE_KEY)||{}) : JSON.parse(localStorage.getItem(TIMETABLE_KEY)||'{}');
+      if(value.trim()===''){ delete store[key]; cell.textContent=''; }
+      else { store[key]=value.trim(); cell.textContent = value.trim(); }
+      if(lsSet) lsSet(TIMETABLE_KEY, store); else localStorage.setItem(TIMETABLE_KEY, JSON.stringify(store));
+    });
+  }
+
+  function renderTimetable(){
+    const store = lsGet ? (lsGet(TIMETABLE_KEY)||{}) : JSON.parse(localStorage.getItem(TIMETABLE_KEY)||'{}');
+    document.querySelectorAll('.tt-cell').forEach(cell=>{
+      const key = `${cell.getAttribute('data-hour')}-${cell.getAttribute('data-day')}`;
+      cell.textContent = store[key] || '';
+    });
+  }
+
+  function showTab(tab){
+    document.querySelectorAll('#bottomNav .nav-item').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab) );
+    // hide all standard panels
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    if(tab==='timetable'){ const el=document.getElementById('tab-timetable'); if(el) el.classList.add('active'); }
+    else { const el = document.getElementById(`tab-${tab}`); if(el) el.classList.add('active'); }
+  }
+
+  function init(){
+    try{ createNavButton(); createTabPanel(); renderTimetable(); }catch(e){ console.error('Timetable init failed', e); }
+    // ensure clicking other nav hides timetable
+    document.getElementById('bottomNav')?.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.nav-item'); if(!btn) return;
+      const tab = btn.getAttribute('data-tab'); if(tab && tab!=='timetable'){ const tt=document.getElementById('tab-timetable'); if(tt) tt.classList.remove('active'); }
+    });
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
