@@ -70,16 +70,13 @@ sessions:pt.sessions||[],
 lsSet(K.HISTORY, history.slice(-30));
 
 ```
-// 어제 일과를 CAL_TASKS에 보존 (habit 아닌 것만 — habit은 getTasksForDate에서 자동 복원)
-const calTasksSnap = lsGet(K.CAL_TASKS)||{};
-const nonHabitTasks = prevTasks.filter(t=>!t.habitId);
-if(nonHabitTasks.length > 0){
-  const existing = (calTasksSnap[last]||[]).filter(m=>!m.habitId);
-  // 이미 저장된 게 없을 때만 저장 (중복 방지)
-  if(existing.length === 0){
-    calTasksSnap[last] = nonHabitTasks;
-    lsSet(K.CAL_TASKS, calTasksSnap);
-  }
+// 어제 일과를 CAL_TASKS에 보존 (habit 아닌 것만)
+// calTasks 변수는 아직 선언 전이므로 lsGet으로 직접 접근
+const _calSnap = lsGet(K.CAL_TASKS)||{};
+const _nonHabit = prevTasks.filter(t=>!t.habitId);
+if(_nonHabit.length > 0 && (_calSnap[last]||[]).filter(m=>!m.habitId).length === 0){
+  _calSnap[last] = _nonHabit;
+  lsSet(K.CAL_TASKS, _calSnap);
 }
 
 const incompleteTasks=prevTasks.filter(t=>!t.done);
