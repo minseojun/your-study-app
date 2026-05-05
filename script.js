@@ -1,16 +1,10 @@
 /* ============================================================
 StudyFlow v10 — script.js
+기능: 타이머(백그라운드 보존/자동저장), 수동기록, 목표바,
+주간 캘린더, 반복 습관, 모의고사 타이머,
+과목별 시간대 히트맵, AI 코치
 ============================================================ */
 ‘use strict’;
-
-/* ── 디버그: 에러 시 화면 상단에 표시 ── */
-window.onerror = function(msg, src, line, col, err) {
-var box = document.createElement(‘div’);
-box.style.cssText = ‘position:fixed;top:0;left:0;right:0;z-index:99999;background:#ff3b30;color:#fff;padding:12px 16px;font-size:13px;font-family:monospace;white-space:pre-wrap;word-break:break-all;’;
-box.textContent = ’⚠️ JS ERROR Line ’ + line + ’: ’ + msg;
-document.body.appendChild(box);
-return false;
-};
 
 /* ══════════════════════════════════════════════════════════
 
