@@ -263,6 +263,9 @@ ul#taskList::-webkit-scrollbar-thumb,ul#tomorrowList::-webkit-scrollbar-thumb{ba
 .cal-strip-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2px;padding:2px 2px 4px}
 .cal-strip-scroll::-webkit-scrollbar{height:2px}
 .cal-strip-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.cal-strip{display:flex;gap:6px;min-width:max-content;padding:2px}
+.cal-strip-scroll::-webkit-scrollbar{height:2px}
+.cal-strip-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .cal-strip{display:flex;gap:6px;min-width:max-content}
 
 /* 날짜 버튼 */
@@ -560,3 +563,4 @@ body.night .tt-input:focus{background:var(--card)}
 /* 바텀 탭 5개 대응 */
 @media(max-width:400px){
   .nav-item span{font-size:.6rem}
+}
